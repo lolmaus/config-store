@@ -1,0 +1,10 @@
+{
+  "extends": "@config-store/typescript-config/node-test.json",
+  "compilerOptions": {
+    "composite": true,
+    "incremental": true,
+    "tsBuildInfoFile": "./dist/tsconfig.test.tsbuildinfo"
+  },
+  "include": ["src/**/*.test.ts"],
+  "references": [{ "path": "./tsconfig.lib.json" }]
+}

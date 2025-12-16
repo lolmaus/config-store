@@ -1,14 +1,26 @@
 {
-  "name": "@config-store/ui",
+  "name": "@config-store/core",
   "version": "0.0.0",
   "private": true,
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    "./*": "./src/*.tsx"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "lint": "eslint . --max-warnings 0",
-    "generate:component": "turbo gen react-component",
-    "check-types": "tsc --noEmit"
+    "check-types": "tsc -b",
+    "test": "tsx --test src/**/*.test.ts",
+    "build": "tsdown"
   },
   "devDependencies": {
     "@config-store/eslint-config": "workspace:*",
@@ -17,6 +29,9 @@
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
     "eslint": "^9.39.1",
+    "happy-dom": "^20.0.11",
+    "tsdown": "^0.18.0",
+    "tsx": "^4.21.0",
     "typescript": "5.9.2"
   },
   "dependencies": {
