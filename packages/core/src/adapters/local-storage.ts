@@ -1,58 +1,74 @@
 import {BaseAdapter} from './base.js';
+import type {AdapterEnvelope, AdapterWriteResult} from '../types.js';
 
-/**
- * Options for the {@link LocalStorageAdapter}.
- */
 export interface LocalStorageAdapterOptions {
-  /**
-   * The key to use in `window.localStorage`.
-   * Ensure this is unique to your application to avoid collisions.
-   */
   key: string;
 }
 
 /**
  * A synchronous adapter for persistence to the browser's LocalStorage.
- *
- * It automatically handles JSON serialization/deserialization.
- *
- * @template TData - The shape of the settings object.
+ * It wraps the data in an envelope `{ settings: ..., metadata: ... }`
+ * to support versioning and other metadata.
  */
-export class LocalStorageAdapter<TData = unknown> extends BaseAdapter<TData> {
+export class LocalStorageAdapter<TData = unknown, TMeta = unknown> extends BaseAdapter<
+  TData,
+  TMeta
+> {
   constructor(private options: LocalStorageAdapterOptions) {
     super();
   }
 
-  /**
-   * Reads and parses data from LocalStorage.
-   *
-   * @returns The parsed data, or `undefined` if the key does not exist or JSON is invalid.
-   */
-  read(): TData | undefined {
-    try {
-      const item = localStorage.getItem(this.options.key);
-
-      if (item) {
-        return JSON.parse(item);
-      }
-    } catch (e) {
-      console.warn('[SettingsManager] LocalStorage access failed:', e);
+  async read(): Promise<AdapterEnvelope<TData, TMeta>> {
+    if (typeof localStorage === 'undefined') {
+      // In SSR environments, return empty/undefined effectively
+      return {settings: undefined as unknown as TData};
     }
 
-    return undefined;
+    const raw = localStorage.getItem(this.options.key);
+
+    if (raw === null) {
+      return {settings: undefined as unknown as TData};
+    }
+
+    try {
+      const parsed = JSON.parse(raw);
+
+      // Check if this is a valid envelope (has 'settings' key).
+      // If your settings object CAN have a 'settings' key at the root,
+      // this heuristic might need a specific flag like `__isEnvelope: true`.
+      // For now, we assume the standard library format.
+      if (parsed && typeof parsed === 'object' && 'settings' in parsed) {
+        return parsed as AdapterEnvelope<TData, TMeta>;
+      }
+
+      // Legacy fallback: If we found data but no envelope structure,
+      // assume it is raw settings data from a previous version of the lib.
+      return {settings: parsed as TData, metadata: undefined};
+    } catch (e) {
+      console.warn('[SettingsManager] Failed to parse LocalStorage value', e);
+      return {settings: undefined as unknown as TData};
+    }
   }
 
-  /**
-   * Serializes and writes data to LocalStorage.
-   *
-   * @param settings - The settings object to serialize.
-   */
-  write(settings: TData): void {
+  async write(
+    settings: TData,
+    _changes: Partial<TData>,
+    metadata?: TMeta
+  ): Promise<AdapterWriteResult<TData, TMeta>> {
     if (typeof localStorage === 'undefined') return;
+
+    const payload: AdapterEnvelope<TData, TMeta> = {
+      settings,
+      metadata,
+    };
+
     try {
-      localStorage.setItem(this.options.key, JSON.stringify(settings));
+      localStorage.setItem(this.options.key, JSON.stringify(payload));
     } catch (e) {
-      console.warn('[SettingsManager] LocalStorage write failed:', e);
+      this.onWriteError(e);
     }
+
+    // We strictly mimic the AsyncAdapter return type
+    return {settings, metadata};
   }
 }
