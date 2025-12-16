@@ -1,135 +1,513 @@
-`# Turborepo starter
+# @config-store
 
-This Turborepo starter is maintained by the Turborepo core team.
+A strict, schema-first config manager designed for long-lived frontend apps. It treats user settings as versioned data structures rather than loose JSON blobs, ensuring your application state remains consistent as your requirements evolve.
 
-## Using this example
+- **Universal Config:** Store user settings, feature flags, or any persistent client-state.
+- **Zod-Powered:** The config is defined as a Zod schema, providing strict TypeScript inference across your codebase. Each setting can be anything from a `boolean` to a complex nested object. The Zod schema also provides defaults for each value.
+- **Atomic Persistence:** The config is stored and retrieved as a single JSON-like data structure.
+- **Migrations:** As your schema changes, define migration functions to automatically update a user's config to conform to the new schema. This process is transparent to the consuming app.
+- **Fail-Safe:** Malformed configs that cannot be migrated are swapped with schema defaults and overwrite the invalid data on the next save.
+- **Flexible Adapters:** Ships with a `LocalStorageAdapter` and a robust `AsyncAdapter` (for REST APIs). You can easily define custom adapters for other protocols (e.g., WebSocket, IndexedDB).
+- **Concurrency Control:** The `AsyncAdapter` handles debouncing and provides three strategies for parallel writes:
+  - `abort`: Cancels previous pending requests (default, relies on AbortController).
+  - `optimistic`: Sends all requests but handles `409 Conflict` via versioning (requires backend logic).
+  - `queue`: Sequential execution (for legacy backends).
+- **Framework-agnostic:** The core can be used with vanilla JS or in any framework.
+- **Framewok integrations:** Offers the following integrations:
+  - **React**: Includes a `useSettings` hook with **selector support** (e.g., `s => s.theme`). This allows a component to rerender only when the relevant individual setting changes. Other changes to the config will not cause rerenders.
 
-Run the following command:
+⠀
+
+## 0. Roadmap
+
+- [ ] Infrastructure
+  - [x] Monorepo
+  - [x] Tasks
+    - [x] Format
+    - [x] Lint
+    - [x] Check types
+    - [x] Build (with `tsdown`)
+    - [x] Unit-test (with `tsx` and `node:test`)
+  - [x] Turborepo configuration
+  - [ ] Turborepo remote caching
+  - [x] CI setup
+    - [x] Check PR title for conventional commits
+    - [x] Run PR checks
+    - [x] Release npm packages with Changelogs
+  - [ ] lefthook for pre-commit checks
+- [ ] Packages
+  - [ ] Core
+    - [x] Adapters
+      - [x] Base
+      - [x] Local Storage
+      - [x] Async
+        - [x] Debouncing
+        - [x] AbortSignal
+        - [x] Concurrency
+          - [x] Default (relies on AbortSignal)
+          - [x] dataVersion
+          - [x] sequential
+    - [ ] Config Manger
+      - [ ] Schema definition via Zod
+      - [ ] `addVersion` / Schema History API
+      - [ ] Migration runner logic
+      - [ ] Default value fallback
+      - [ ] Metadata/Version state management
+      - [ ] Type inference helpers (`InferSettings<T>`)
+  - [ ] React
+  - [ ] Docs app
+- [ ] Testing
+  - [x] Unit tests
+- [ ] Documentation
+  - [x] Readme
+    - [x] Intro, rationalization
+    - [x] Roadmap
+    - [x] Usage samples
+    - [x] Adapter usage
+    - [x] FAQ
+    - [x] Development
+  - [ ] Docs app
+  - [ ] API documentation
+    - [ ] Document with inline comments
+    - [ ] Build documentation with TypeDoc
+
+⠀
+
+## 1. Installation
+
+Install the `@config-store/core` package using your preferred npm-based package manager:
 
 ```sh
-npx create-turbo@latest
+npm i -S @config-store/core
+pnpm add @config-store/core
+yarn add @config-store/core
+bun add @config-store/core
 ```
 
-## What's inside?
+Optionally, install a framework-specific package. The following packages are available:
 
-This Turborepo includes the following packages/apps:
+- `@config-store/react` (WIP)
 
-### Apps and Packages
+Support for other frameworks is not planned, but contributions are very welcome.
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@config-store/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@config-store/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@config-store/typescript-config`: `tsconfig.json`s used throughout the monorepo
+⠀
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
+## 2. Quickstart
 
-### Utilities
+### 2.1. Define the manager
 
-This Turborepo has some additional tools already setup for you:
+In e. g. `src/settings/manager.ts`, instantiate the adapter and pass it to the `SettingsManager`.
 
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
+Chain `.addVersion()` to define your schema history.
 
-### Build
+Make sure to provide default values via Zod to every setting.
 
-To build all apps and packages, run the following command:
+```ts
+import {SettingsManager, LocalStorageAdapter, type InferSettings} from '@lolmaus/config-store';
+import {z} from 'zod';
 
-```
-cd my-turborepo
+// 2.1.1. Create your adapter (or import a custom one)
+// LocalStorageAdapter now automatically handles the envelope format
+const adapter = new LocalStorageAdapter({key: 'my-app-settings'});
 
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo build
+// 2.1.2. Initialize the manager with the adapter
+export const settingsManager = new SettingsManager({adapter})
+  // Define Version 1
+  .addVersion({
+    version: 1,
+    schema: z.object({
+      menuExpanded: z.boolean().default(true),
+      darkTheme: z.boolean().default(false),
+    }),
+  })
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo build
-yarn dlx turbo build
-pnpm exec turbo build
-```
+  // Define Version 2
+  .addVersion({
+    version: 2,
+    schema: z.object({
+      menuExpanded: z.boolean().default(true),
+      // Changed from boolean 'darkTheme' to 'theme' typed as 'light' | 'dark' | 'high-contrast'
+      theme: z.literal(['light', 'dark', 'high-contrast']).default('light'),
+    }),
 
-You can build a specific package by using a [filter](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters):
+    migration: (prev) => {
+      // TypeScript automatically infers 'prev' as the previous version
+      return {
+        menuExpanded: prev.menuExpanded,
+        theme: prev.darkTheme ? 'dark' : 'light',
+      };
+    },
+  });
 
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo build --filter=docs
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo build --filter=docs
-yarn exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-```
-
-### Develop
-
-To develop all apps and packages, run the following command:
-
-```
-cd my-turborepo
-
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo dev
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo dev
-yarn exec turbo dev
-pnpm exec turbo dev
+// 2.1.3. Export the current settings type
+export type Settings = InferSettings<typeof settingsManager>;
 ```
 
-You can develop a specific package by using a [filter](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters):
+⠀
 
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo dev --filter=web
+### 2.2. Wrap your app with the settings provider
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo dev --filter=web
-yarn exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-```
+Pass your `settingsManager` instance into the `manager` prop of the provider.
 
-### Remote Caching
+```tsx
+import {SettingsProvider} from '@lolmaus/config-store';
+import {settingsManager} from './settings/manager';
 
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
-
-Turborepo can use a technique known as [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
-
-```
-cd my-turborepo
-
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo login
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo login
-yarn exec turbo login
-pnpm exec turbo login
+export const App = () => (
+  <SettingsProvider value={settingsManager}>
+    <Dashboard />
+  </SettingsProvider>
+);
 ```
 
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
+⠀
 
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
+### 2.3. Read settings
 
+Use the hook `useSettings` to read settings:
+
+```tsx
+import {useSettings} from '@lolmaus/config-store';
+
+export const PageWrapper = ({children}) => {
+  // Get the entire settings object
+  const settings = useSettings();
+
+  // Pass a selector to subscribe only to specific changes (renders optimized)
+  const theme = useSettings((s) => s.theme);
+
+  return <div data-theme={theme}>{children}</div>;
+};
 ```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo link
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo link
-yarn exec turbo link
-pnpm exec turbo link
+⠀
+
+### 2.4. Persist settings
+
+Use the `useUpdateSettings` hook to update settings:
+
+```tsx
+import {useUpdateSettings} from '@lolmaus/config-store';
+
+export const ThemeToggler = () => {
+  const {update} = useUpdateSettings();
+
+  // Assuming this will be user input
+  const newPartialSettings = {theme: 'dark'};
+
+  return (
+    <div>
+      <button onClick={() => update(newPartialSettings)}>Switch to Dark Mode</button>
+    </div>
+  );
+};
 ```
 
-## Useful Links
+⠀
 
-Learn more about the power of Turborepo:
+## 3. Defining a custom adapter
 
-- [Tasks](https://turborepo.com/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.com/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.com/docs/reference/configuration)
-- [CLI Usage](https://turborepo.com/docs/reference/command-line-reference)
+While the `LocalStorageAdapter` covers basic use cases, you will often need to persist settings to a remote API.
+
+⠀
+
+### 3.1 The AsyncSettingsAdapter Helper
+
+Writing a robust async adapter from scratch is difficult. You have to handle debouncing (so dragging a slider doesn't DDOS your server), race conditions, and error handling.
+
+We provide a helper class `AsyncSettingsAdapter` that handles this heavy lifting for you. It strictly enforces an "Envelope" pattern (`{ settings, metadata }`) so you can easily handle server-side versioning (e.g. `dataVersion` or `updatedAt`) alongside your data.
+
+In e. g. `src/settings/adapter.ts`:
+
+```ts
+import {AsyncSettingsAdapter} from '@lolmaus/config-store';
+
+// Define your metadata shape (optional, defaults to unknown)
+interface MyMeta {
+  dataVersion: number;
+}
+
+export const apiAdapter = new AsyncSettingsAdapter<MySettings, MyMeta>({
+  // How long to wait after the last change before saving (default: 500ms)
+  debounceMs: 500,
+
+  // Choose how to handle concurrent save requests
+  concurrency: 'abort',
+
+  // READ must return the envelope: { settings, metadata }
+  read: async () => {
+    const res = await fetch('/api/settings');
+    if (!res.ok) throw new Error('Failed to fetch');
+
+    // Assuming server returns: { data: { ...settings }, meta: { dataVersion: 1 } }
+    const json = await res.json();
+
+    return {
+      settings: json.data,
+      metadata: json.meta,
+    };
+  },
+
+  // WRITE receives the opaque metadata blob from the manager
+  // You should send it back to the server to handle optimistic locking or versioning
+  write: async (settings, _changes, metadata, signal) => {
+    const payload = {
+      data: settings,
+      meta: metadata, // e.g. { dataVersion: 1 }
+    };
+
+    const res = await fetch('/api/settings', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+      headers: {'Content-Type': 'application/json'},
+      signal, // 'signal' is provided if you use concurrency: 'abort'
+    });
+
+    if (!res.ok) throw new Error('Save Failed');
+
+    // Optional: Return updated metadata/settings from server response
+    const json = await res.json();
+    return {metadata: json.meta};
+  },
+
+  onWriteError: (error) => {
+    console.error('[ConfigStore] Background save failed:', error);
+  },
+});
+```
+
+Then register your adapter with the SettingsManager:
+
+```ts
+import {apiAdapter} from './adapter';
+
+export const settingsManager = new SettingsManager({adapter});
+```
+
+⠀
+
+### 3.2 Handling Concurrency (Race Conditions)
+
+When a user modifies settings rapidly (e.g., dragging a volume slider), multiple save requests are generated. Network latency can cause these requests to arrive out of order.
+
+The `AsyncSettingsAdapter` supports three strategies via the `concurrency` option to solve this:
+
+⠀
+
+#### 3.2.1 concurrency: abort — default
+
+**Best for:** Modern backends and standard APIs.
+
+When a new save starts, the library automatically aborts the previous pending request using the browser's `AbortController`.
+
+- **Pros:** Prevents race conditions; reduces server load; UI feels snappy.
+- **Cons:** Backend/Fetch must support `AbortSignal` (Standard `fetch` does).
+
+```ts
+new AsyncSettingsAdapter({
+  concurrency: 'abort', // default
+
+  write: async (settings, _changes, metadata, signal) => {
+    // Pass the signal to fetch!
+    await fetch('/api/settings', {
+      method: 'POST',
+      body: JSON.stringify({settings, metadata}),
+      signal,
+    });
+  },
+});
+```
+
+⠀
+
+#### 3.2.2 concurrency: optimistic — ideal solution, requires backend logic
+
+**Best for:** sophisticated backends implementing Optimistic Concurrency Control (OCC).
+
+The library fires requests immediately. By passing the `metadata` (containing version numbers) in your `write` function, your server can reject outdated writes (e.g., returning `409 Conflict`).
+
+The library treats the `metadata` object as opaque context—it stores it and passes it back to you during writes, allowing you to implement version increments or timestamps without polluting your settings schema.
+
+⠀
+
+#### 3.2.3 concurrency: queue — legacy Fallback
+
+**Best for:** Legacy backends that do not support HTTP request cancellation and do not handle versioning.
+
+The library waits for Request A to finish before sending Request B.
+
+- **Pros:** Safe; works with anything.
+- **Cons:** Slow. If the network is laggy, the "Save" indicator may spin for a long time.
+
+```ts
+new AsyncSettingsAdapter({
+  concurrency: 'queue',
+
+  write: async (settings) => {
+    // This will never run in parallel with another write
+    await fetch('/api/settings', {
+      /*...*/
+    });
+  },
+});
+```
+
+⠀
+
+### 3.3 Handling Backend Responses
+
+Sometimes, the server modifies the data you sent (sanitization) or updates the metadata (bumping versions).
+
+The `write` function expects a **WriteResult** return type:
+
+```ts
+type WriteResult<TData, TMeta> = {
+  settings?: TData; // Return this if server sanitized the settings
+  metadata?: TMeta; // Return this if server bumped the version
+} | void;
+```
+
+Return `void`: The library keeps the "Optimistic Update" (the value the user set).
+
+Return `object`: The library silently updates the store with the data returned from the server.
+
+```ts
+const apiAdapter = new AsyncSettingsAdapter({
+  write: async (settings, _changes, metadata, signal) => {
+    const res = await fetch('/api/settings', {
+      /*...*/
+    });
+    const json = await res.json();
+
+    // The server sanitized the volume and bumped the version.
+    // We return both so the local store stays in sync.
+    return {
+      settings: json.data,
+      metadata: json.meta,
+    };
+  },
+});
+```
+
+Note: Updates triggered by the adapter's return value are treated as "sync" events. They do not trigger a subsequent save loop.
+
+⠀
+
+### 3.4 Handle loading and error states in the UI
+
+```tsx
+import {useUpdateSettings} from '@lolmaus/config-store';
+
+export const ThemeToggler = () => {
+  const {update, isSaving} = useUpdateSettings();
+
+  const toggle = async (newTheme: string) => {
+    try {
+      // 1. Updates UI immediately (Optimistic)
+      // 2. Awaits the adapter's write operation
+      await update({theme: newTheme});
+      toast.success('Saved!');
+    } catch (err) {
+      // 3. At this point, settings will automatically rollback
+      toast.error('Failed to save theme');
+    }
+  };
+
+  return (
+    <div>
+      <button onClick={toggle}>{isSaving ? 'Saving...' : 'Switch to Dark Mode'}</button>
+      {error && <span className="error">Save failed!</span>}
+    </div>
+  );
+};
+```
+
+## 4. FAQ
+
+### 4.1 Should I use TanStack Query in the adapter?
+
+**Probably not.**
+
+TanStack Query (React Query) is designed for **Server State**. This library manages **Client State**. If you use TanStack Query inside the adapter, you are effectively caching the data twice.
+
+If you know what you're doing, you _can_ bridge them using `queryClient.fetchQuery` inside `adapter.read()` and `queryClient.setQueryData` inside `adapter.write()`.
+
+⠀
+
+### 4.2 Why does the library depend on Zustand?
+
+We use `zustand/vanilla` internally as a micro-dependency (<1kb) to provide a robust implementation of `useSyncExternalStore` and selector support (`useSettings(s => s.theme)`). This prevents unnecessary re-renders that would occur with standard React Context.
+
+⠀
+
+### 4.3 What's the hassle with migrations?
+
+Settings schemas change (e.g., `boolean` to `enum`). Without migrations, a user returning after 6 months will crash your app because their localStorage data doesn't match your new code. This library centralizes migration logic, keeping your UI code clean and typed strictly to the _latest_ version.
+
+⠀
+
+### 4.4 What happens if I omit a migration?
+
+If `adapter.read()` returns data that does not match the current Zod schema, **Zod will throw a validation error**. The `SettingsManager` catches this error, logs it, and **falls back to default values** to prevent a White Screen of Death.
+
+⠀
+
+### 4.5 How do I reset a setting to its default value?
+
+Pass `undefined` to the update hook: `updateSettings({ theme: undefined })`. Zod will apply the `.default()` value defined in your schema.
+
+⠀
+
+## 5. Development
+
+This project uses **TurboRepo** and **pnpm**.
+
+### 5.1 Setup
+
+```bash
+# Install dependencies
+pnpm install
+```
+
+### 5.2 Running Tests
+
+We use the native Node.js test runner.
+
+```bash
+# Run all tests
+pnpm test
+
+# Run tests in watch mode
+pnpm test -- --watch
+```
+
+### 5.3 Building
+
+```bash
+# Build all packages
+pnpm build
+```
+
+### 5.4 Versioning and Publishing
+
+This repository uses **Changesets** for version management.
+
+1.  **Create a changeset:** Run this command before commiting your changes to generate a changelog entry:
+
+    ```bash
+    pnpm changeset
+    ```
+
+    Include the resulting changeset into your commit.
+
+2.  **Version packages:** (Usually handled by CI)
+
+    ```bash
+    pnpm changeset version
+    pnpm install # update lockfile
+    ```
+
+3.  **Publish:**
+    ```bash
+    pnpm release
+    ```
