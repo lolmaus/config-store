@@ -31,9 +31,9 @@ A strict, schema-first config manager designed for long-lived frontend apps. It 
   - [x] Turborepo configuration
   - [ ] Turborepo remote caching
   - [x] CI setup
-    - [x] Check PR title for conventional commits
+    - [x] ~~Check PR title for conventional commits~~
     - [x] Run PR checks
-    - [x] Release npm packages with Changelogs
+    - [x] Release npm packages with Changesets
   - [ ] lefthook for pre-commit checks
 - [ ] Packages
   - [ ] Core
