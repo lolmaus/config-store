@@ -1,0 +1,41 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches: ["gen0"]
+  push:
+    branches: ["gen0"]
+
+jobs:
+  quality:
+    name: Quality Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # 1. Check Formatting
+      # We use 'npx prettier --check' instead of your 'format' script
+      # because we want to fail if files aren't formatted, not auto-fix them.
+      - name: Check Formatting
+        run: pnpm format:check
+
+      # 2. Run Lint, Types, and Test
+      # We let Turbo orchestrate these. It will parallelize where possible.
+      # Note: 'test' depends on 'build' in your turbo.json, so build will run automatically here.
+      - name: Run Turbo Pipeline
+        run: pnpm turbo run lint check-types test
