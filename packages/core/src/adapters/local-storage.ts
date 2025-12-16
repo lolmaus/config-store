@@ -1,4 +1,4 @@
-import { BaseAdapter } from "./base.js";
+import {BaseAdapter} from './base.js';
 
 /**
  * Options for the {@link LocalStorageAdapter}.
@@ -36,7 +36,7 @@ export class LocalStorageAdapter<TData = unknown> extends BaseAdapter<TData> {
         return JSON.parse(item);
       }
     } catch (e) {
-      console.warn("[SettingsManager] LocalStorage access failed:", e);
+      console.warn('[SettingsManager] LocalStorage access failed:', e);
     }
 
     return undefined;
@@ -48,11 +48,11 @@ export class LocalStorageAdapter<TData = unknown> extends BaseAdapter<TData> {
    * @param settings - The settings object to serialize.
    */
   write(settings: TData): void {
-    if (typeof localStorage === "undefined") return;
+    if (typeof localStorage === 'undefined') return;
     try {
       localStorage.setItem(this.options.key, JSON.stringify(settings));
     } catch (e) {
-      console.warn("[SettingsManager] LocalStorage write failed:", e);
+      console.warn('[SettingsManager] LocalStorage write failed:', e);
     }
   }
 }

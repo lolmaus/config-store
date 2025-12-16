@@ -24,10 +24,7 @@ export abstract class BaseAdapter<TData = unknown> {
    * @returns A Promise that resolves when the write is complete, or void if synchronous.
    * If the adapter returns a value, the SettingsManager will update the store with it.
    */
-  abstract write(
-    settings: TData,
-    changes: Partial<TData>
-  ): Promise<TData | void> | void;
+  abstract write(settings: TData, changes: Partial<TData>): Promise<TData | void> | void;
 
   /**
    * A lifecycle hook to handle write errors.

@@ -1,4 +1,4 @@
-import { BaseAdapter } from './base.js';
+import {BaseAdapter} from './base.js';
 
 /**
  * Strategies for handling concurrent write requests.
@@ -31,11 +31,7 @@ export interface AsyncAdapterOptions<TData> {
    * Pass this to your `fetch` call to enable cancellation.
    * @returns A Promise resolving to the saved settings (optional) or void.
    */
-  write: (
-    settings: TData,
-    changes: Partial<TData>,
-    signal?: AbortSignal
-  ) => Promise<TData | void>;
+  write: (settings: TData, changes: Partial<TData>, signal?: AbortSignal) => Promise<TData | void>;
 
   /**
    * Optional callback for handling write errors (e.g. for toast notifications).
@@ -105,7 +101,7 @@ export class AsyncAdapter<TData = unknown> extends BaseAdapter<TData> {
    * @param changes - The changed properties.
    */
   write(settings: TData, changes: Partial<TData>): Promise<TData | void> {
-    const { debounceMs = 500, concurrency = 'abort' } = this.options;
+    const {debounceMs = 500, concurrency = 'abort'} = this.options;
 
     // Clear existing debounce timer to restart the countdown
     if (this.debounceTimer) {
