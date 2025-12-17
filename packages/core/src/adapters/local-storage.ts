@@ -10,15 +10,12 @@ export interface LocalStorageAdapterOptions {
  * It wraps the data in an envelope `{ config: ..., metadata: ... }`
  * to support versioning and other metadata.
  */
-export class LocalStorageAdapter<
-  TConfig = unknown,
-  TMeta extends Meta = Meta,
-> extends BaseAdapter<TMeta> {
+export class LocalStorageAdapter extends BaseAdapter {
   constructor(private options: LocalStorageAdapterOptions) {
     super();
   }
 
-  read(): AdapterEnvelope<TMeta> | void {
+  read(): AdapterEnvelope | void {
     if (typeof localStorage === 'undefined') return;
 
     const raw: string | null = localStorage.getItem(this.options.key);
@@ -33,14 +30,10 @@ export class LocalStorageAdapter<
     }
   }
 
-  write(
-    config: TConfig,
-    _changes: Partial<TConfig>,
-    metadata?: TMeta
-  ): AdapterWriteResult<TMeta> | void {
+  write(config: unknown, _changes: unknown, metadata: Meta): AdapterWriteResult | void {
     if (typeof localStorage === 'undefined') return;
 
-    const payload: AdapterEnvelope<TMeta> = {
+    const payload: AdapterEnvelope = {
       config,
       metadata,
     };

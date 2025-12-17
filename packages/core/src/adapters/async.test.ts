@@ -13,7 +13,7 @@ type WriteArgs = Parameters<AsyncAdapterOptions['write']>;
 
 describe('AsyncAdapter', () => {
   let m: string;
-  let adapter: AsyncAdapter<TestConfig>;
+  let adapter: AsyncAdapter;
 
   // Mock Definitions
   let readMock: Mock<AsyncAdapterOptions['read']>;

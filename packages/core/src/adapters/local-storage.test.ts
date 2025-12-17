@@ -8,7 +8,7 @@ interface TestConfig {
 }
 
 describe('LocalStorageAdapter', () => {
-  let adapter: LocalStorageAdapter<TestConfig>;
+  let adapter: LocalStorageAdapter;
   let m: string;
 
   // Mock storage methods
@@ -69,12 +69,22 @@ describe('LocalStorageAdapter', () => {
     });
 
     it('returns undefined if JSON parsing fails', async () => {
+      const warnMock = mock.method(console, 'warn', () => {});
+
       getItemMock.mock.mockImplementation(() => '{ invalid json }');
 
       const result = await adapter.read();
 
       m = 'Should gracefully handle parse errors';
       assert.deepStrictEqual(result, undefined, m);
+
+      m = 'Should log a warning to the console';
+      assert.strictEqual(warnMock.mock.callCount(), 1, m);
+
+      const args = warnMock.mock.calls[0]?.arguments;
+      assert.match(args?.[0], /Failed to parse/, 'Should mention parsing failure');
+
+      warnMock.mock.restore();
     });
   });
 
@@ -100,19 +110,6 @@ describe('LocalStorageAdapter', () => {
 
       m = 'Saved JSON should be the full envelope';
       assert.deepStrictEqual(parsed, {config, metadata}, m);
-    });
-
-    it('handles writes without metadata', async () => {
-      const config: TestConfig = {theme: 'light'};
-
-      await adapter.write(config, {}, undefined);
-
-      const value = setItemMock.mock.calls[0]?.arguments?.[1] as string;
-      const parsed = JSON.parse(value);
-
-      m =
-        'Envelope should contain only settings (metadata undefined is stripped by JSON.stringify)';
-      assert.deepStrictEqual(parsed, {config}, m);
     });
   });
 });
