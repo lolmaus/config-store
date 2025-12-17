@@ -21,6 +21,9 @@
     "test": "tsx --test src/**/*.test.ts",
     "build": "tsdown"
   },
+  "peerDependencies": {
+    "zod": "^4.2.1"
+  },
   "devDependencies": {
     "@config-store/eslint-config": "workspace:*",
     "@config-store/typescript-config": "workspace:*",
@@ -31,11 +34,13 @@
     "happy-dom": "^20.0.11",
     "tsdown": "^0.18.0",
     "tsx": "^4.21.0",
-    "typescript": "5.9.2"
+    "typescript": "5.9.2",
+    "zod": "^4.2.1"
   },
   "dependencies": {
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "zustand": "^5.0.9"
   },
   "publishConfig": {
     "access": "public"

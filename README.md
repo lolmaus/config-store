@@ -48,12 +48,15 @@ A strict, schema-first config manager designed for long-lived frontend apps. It 
           - [x] dataVersion
           - [x] sequential
     - [ ] Config Manger
-      - [ ] Schema definition via Zod
-      - [ ] `addVersion` / Schema History API
-      - [ ] Migration runner logic
-      - [ ] Default value fallback
-      - [ ] Metadata/Version state management
-      - [ ] Type inference helpers (`InferConfig<T>`)
+      - [x] Schema definition via Zod
+      - [x] `addVersion` / Schema History API
+      - [x] Migration runner logic
+      - [x] Default value fallback
+      - [x] Metadata/Version state management
+      - [x] Type inference helper (`InferConfig<T>`)
+      - [x] Zustand store
+      - [x] Retrieving config from the manager
+      - [ ] Updating config
   - [ ] React
   - [ ] Docs app
 - [ ] Testing
@@ -75,7 +78,9 @@ A strict, schema-first config manager designed for long-lived frontend apps. It 
 
 ## 1. Installation
 
-Install the `@config-store/core` package using your preferred npm-based package manager:
+1.1. Make sure you have [Zod 4](https://zod.dev) installed.
+
+1.2. Install the `@config-store/core` package using your preferred npm-based package manager:
 
 ```sh
 npm i -S @config-store/core
@@ -84,7 +89,7 @@ yarn add @config-store/core
 bun add @config-store/core
 ```
 
-Optionally, install a framework-specific package. The following packages are available:
+1.3. Optionally, install a framework-specific package. The following packages are available:
 
 - `@config-store/react` (WIP)
 
@@ -100,7 +105,10 @@ In e. g. `src/settings/manager.ts`, instantiate the adapter and pass it to the `
 
 Chain `.addVersion()` to define your schema history.
 
-Make sure to provide default values via Zod to every setting.
+⚠️ Important: the Zod schema is used as the source of truth for config defaults. It should be able to handle `undefind` as input and produce a valid default config. For this to be possible:
+
+- You must provide [.default()](https://zod.dev/api?id=defaults) values for every property in your schema.
+- You must attach [.prefault({})](https://zod.dev/api?id=prefaults) to the root `z.object()`.
 
 ```ts
 import {ConfigManager, LocalStorageAdapter, type InferConfig} from '@lolmaus/config-store';
@@ -115,23 +123,27 @@ export const ConfigManager = new ConfigManager({adapter})
   // Define Version 1
   .addVersion({
     version: 1,
-    schema: z.object({
-      menuExpanded: z.boolean().default(true),
-      darkTheme: z.boolean().default(false),
-    }),
+    schema: z
+      .object({
+        menuExpanded: z.boolean().default(true),
+        darkTheme: z.boolean().default(false),
+      })
+      .prefault({}),
   })
 
   // Define Version 2
   .addVersion({
     version: 2,
-    schema: z.object({
-      menuExpanded: z.boolean().default(true),
-      // Changed from boolean 'darkTheme' to 'theme' typed as 'light' | 'dark' | 'high-contrast'
-      theme: z.literal(['light', 'dark', 'high-contrast']).default('light'),
-    }),
+    schema: z
+      .object({
+        menuExpanded: z.boolean().default(true),
+        // Changed from boolean 'darkTheme' to 'theme' typed as 'light' | 'dark' | 'high-contrast'
+        theme: z.literal(['light', 'dark', 'high-contrast']).default('light'),
+      })
+      .prefault({}),
 
     migration: (prev) => {
-      // TypeScript automatically infers 'prev' as the previous version
+      // TypeScript automatically infers 'prev' as the previous version 💎
       return {
         menuExpanded: prev.menuExpanded,
         theme: prev.darkTheme ? 'dark' : 'light',

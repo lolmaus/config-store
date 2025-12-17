@@ -6,11 +6,11 @@ export type ConcurrencyStrategy = 'abort' | 'optimistic' | 'queue';
 /**
  * Configuration options for the {@link AsyncAdapter}.
  */
-export interface AsyncAdapterOptions<TMeta extends Meta = Meta> {
+export interface AsyncAdapterOptions {
   /**
    * Retrieves settings and metadata.
    */
-  read: () => Promise<AdapterEnvelope<TMeta>>;
+  read: () => Promise<AdapterEnvelope>;
 
   /**
    * Persists settings.
@@ -20,25 +20,25 @@ export interface AsyncAdapterOptions<TMeta extends Meta = Meta> {
   write: (
     config: unknown,
     changes: unknown,
-    metadata: TMeta | undefined,
+    metadata: Meta | undefined,
     signal?: AbortSignal
-  ) => Promise<AdapterWriteResult<TMeta> | void>;
+  ) => Promise<AdapterWriteResult | void>;
 
   onWriteError?: (error: unknown) => void;
   debounceMs?: number;
   concurrency?: ConcurrencyStrategy;
 }
 
-export class AsyncAdapter<TConfig = unknown, TMeta extends Meta = Meta> extends BaseAdapter<TMeta> {
-  protected options: AsyncAdapterOptions<TMeta>;
+export class AsyncAdapter extends BaseAdapter {
+  protected options: AsyncAdapterOptions;
   protected debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-  protected pendingResolve: ((value?: AdapterWriteResult<TMeta>) => void) | null = null;
+  protected pendingResolve: ((value?: AdapterWriteResult) => void) | null = null;
 
   protected abortController: AbortController | null = null;
   protected writeQueue: Promise<void> = Promise.resolve();
 
-  constructor(options: AsyncAdapterOptions<TMeta>) {
+  constructor(options: AsyncAdapterOptions) {
     super();
     this.options = options;
   }
@@ -51,15 +51,15 @@ export class AsyncAdapter<TConfig = unknown, TMeta extends Meta = Meta> extends 
     }
   }
 
-  read(): Promise<AdapterEnvelope<TMeta>> {
+  read(): Promise<AdapterEnvelope> {
     return this.options.read();
   }
 
   write(
-    config: TConfig,
-    changes: Partial<TConfig>,
-    metadata?: TMeta
-  ): Promise<AdapterWriteResult<TMeta> | void> {
+    config: unknown,
+    changes: Partial<unknown>,
+    metadata: Meta
+  ): Promise<AdapterWriteResult | void> {
     const {debounceMs = 500, concurrency = 'abort'} = this.options;
 
     if (this.debounceTimer) clearTimeout(this.debounceTimer);
@@ -68,7 +68,7 @@ export class AsyncAdapter<TConfig = unknown, TMeta extends Meta = Meta> extends 
       this.pendingResolve = null;
     }
 
-    return new Promise<AdapterWriteResult<TMeta> | void>((resolve, reject) => {
+    return new Promise<AdapterWriteResult | void>((resolve, reject) => {
       this.pendingResolve = resolve;
 
       this.debounceTimer = setTimeout(() => {
@@ -87,11 +87,11 @@ export class AsyncAdapter<TConfig = unknown, TMeta extends Meta = Meta> extends 
   }
 
   protected async executeWrite(
-    config: TConfig,
-    changes: Partial<TConfig>,
-    metadata: TMeta | undefined,
+    config: unknown,
+    changes: unknown,
+    metadata: Meta | undefined,
     strategy: ConcurrencyStrategy
-  ): Promise<AdapterWriteResult<TMeta> | void> {
+  ): Promise<AdapterWriteResult | void> {
     if (strategy === 'abort') {
       if (this.abortController) this.abortController.abort();
       this.abortController = new AbortController();

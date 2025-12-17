@@ -1,3 +1,6 @@
+import {ZodType} from 'zod';
+import type {ConfigManager} from './manager.js';
+
 /**
  * Base type for metadata
  */
@@ -9,13 +12,27 @@ export interface Meta {
 /**
  * The Strict Contract for adapter read
  */
-export interface AdapterEnvelope<TMeta extends Meta = Meta> {
+export interface AdapterEnvelope {
   config: unknown;
-  metadata?: TMeta;
+  metadata: Meta;
 }
 
 /**
  * The Loose Contract for Writes
  * A write result is just a partial update of the envelope.
  */
-export type AdapterWriteResult<TMeta extends Meta = Meta> = Partial<AdapterEnvelope<TMeta>>;
+export type AdapterWriteResult = Partial<AdapterEnvelope>;
+
+/**
+ * Descriptor of a schema version
+ */
+export interface VersionDef<TPrev, TNext> {
+  version: number;
+  schema: ZodType<TNext>;
+  migration?: (prev: TPrev) => TNext;
+}
+
+/**
+ * Helper to infer the Config type from the Manager instance
+ */
+export type InferConfig<T> = T extends ConfigManager<infer C> ? C : never;
