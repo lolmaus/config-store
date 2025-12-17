@@ -1,39 +1,35 @@
 import {describe, it, mock, beforeEach, afterEach, type Mock} from 'node:test';
 import assert from 'node:assert/strict';
 import {AsyncAdapter, type AsyncAdapterOptions} from './async.js';
-import type {AdapterWriteResult} from '../types.js';
+import type {AdapterWriteResult, Meta} from '../types.js';
 
-interface TestSettings {
+interface TestConfig {
   theme: 'light' | 'dark';
   volume: number;
 }
 
-interface TestMeta {
-  version: number;
-}
-
 // Helper type to fix the tuple indexing errors
-type WriteArgs = Parameters<AsyncAdapterOptions<TestSettings, TestMeta>['write']>;
+type WriteArgs = Parameters<AsyncAdapterOptions['write']>;
 
 describe('AsyncAdapter', () => {
   let m: string;
-  let adapter: AsyncAdapter<TestSettings, TestMeta>;
+  let adapter: AsyncAdapter<TestConfig>;
 
   // Mock Definitions
-  let readMock: Mock<AsyncAdapterOptions<TestSettings, TestMeta>['read']>;
-  let writeMock: Mock<AsyncAdapterOptions<TestSettings, TestMeta>['write']>;
+  let readMock: Mock<AsyncAdapterOptions['read']>;
+  let writeMock: Mock<AsyncAdapterOptions['write']>;
 
   beforeEach(() => {
     mock.timers.enable({apis: ['setTimeout']});
 
     // 1. Mock Read
     readMock = mock.fn(async () => ({
-      settings: {theme: 'light', volume: 50},
-      metadata: {version: 1},
+      config: {theme: 'light', volume: 50},
+      metadata: {dataVersion: 1, schemaVersion: 1},
     }));
 
     // 2. Mock Write
-    writeMock = mock.fn(async () => ({metadata: {version: 2}}));
+    writeMock = mock.fn(async () => ({metadata: {dataVersion: 2, schemaVersion: 1}}));
 
     adapter = new AsyncAdapter({
       read: readMock,
@@ -59,8 +55,8 @@ describe('AsyncAdapter', () => {
       assert.deepStrictEqual(
         result,
         {
-          settings: {theme: 'light', volume: 50},
-          metadata: {version: 1},
+          config: {theme: 'light', volume: 50},
+          metadata: {dataVersion: 1, schemaVersion: 1},
         },
         m
       );
@@ -80,10 +76,10 @@ describe('AsyncAdapter', () => {
 
   describe('write() — Debouncing & Metadata', () => {
     it('passes metadata to the write function as the 3rd argument', async () => {
-      const settings: TestSettings = {theme: 'dark', volume: 50};
-      const metadata: TestMeta = {version: 1};
+      const config: TestConfig = {theme: 'dark', volume: 50};
+      const metadata: Meta = {dataVersion: 1, schemaVersion: 1};
 
-      const promise = adapter.write(settings, {theme: 'dark'}, metadata);
+      const promise = adapter.write(config, {theme: 'dark'}, metadata);
 
       mock.timers.tick(150);
       await promise;
@@ -99,18 +95,24 @@ describe('AsyncAdapter', () => {
 
     it('returns the WriteResult from the user function', async () => {
       const result = await new Promise((resolve) => {
-        adapter.write({theme: 'dark', volume: 50}, {}, {version: 1}).then(resolve);
+        adapter
+          .write({theme: 'dark', volume: 50}, {}, {dataVersion: 1, schemaVersion: 1})
+          .then(resolve);
         mock.timers.tick(150);
       });
 
       m = 'Should return the object provided by writeMock';
-      assert.deepStrictEqual(result, {metadata: {version: 2}}, m);
+      assert.deepStrictEqual(result, {metadata: {dataVersion: 2, schemaVersion: 1}}, m);
     });
   });
 
   describe('write() — Concurrency: "abort" (default)', () => {
     it('passes a valid AbortSignal as the 4th argument', async () => {
-      const promise = adapter.write({theme: 'dark', volume: 50}, {theme: 'dark'}, {version: 1});
+      const promise = adapter.write(
+        {theme: 'dark', volume: 50},
+        {theme: 'dark'},
+        {dataVersion: 1, schemaVersion: 1}
+      );
 
       mock.timers.tick(150);
       await promise;
@@ -124,11 +126,11 @@ describe('AsyncAdapter', () => {
     });
 
     it('aborts the previous pending request signal', async () => {
-      let resolveFirst: ((value: AdapterWriteResult<TestSettings, TestMeta>) => void) | undefined;
+      let resolveFirst: ((value: AdapterWriteResult) => void) | undefined;
 
       const slowMock = mock.fn(async () => {
         if (!resolveFirst) {
-          return new Promise<AdapterWriteResult<TestSettings, TestMeta>>((resolve) => {
+          return new Promise<AdapterWriteResult>((resolve) => {
             resolveFirst = resolve;
           });
         }
@@ -142,7 +144,7 @@ describe('AsyncAdapter', () => {
       });
 
       // Req A
-      const p1 = adapter.write({theme: 'light', volume: 1}, {}, {version: 1});
+      const p1 = adapter.write({theme: 'light', volume: 1}, {}, {dataVersion: 1, schemaVersion: 1});
       mock.timers.tick(150);
 
       const callA = slowMock.mock.calls[0];
@@ -154,12 +156,12 @@ describe('AsyncAdapter', () => {
       assert.strictEqual(signalA.aborted, false, 'Signal A not aborted yet');
 
       // Req B
-      const p2 = adapter.write({theme: 'light', volume: 2}, {}, {version: 2});
+      const p2 = adapter.write({theme: 'light', volume: 2}, {}, {dataVersion: 2, schemaVersion: 1});
       mock.timers.tick(100);
 
       assert.strictEqual(signalA.aborted, true, 'Signal A should be aborted');
 
-      if (resolveFirst) resolveFirst({metadata: {version: 2}});
+      if (resolveFirst) resolveFirst({metadata: {dataVersion: 2, schemaVersion: 1}});
       await p1;
       await p2;
     });
@@ -177,7 +179,7 @@ describe('AsyncAdapter', () => {
         debounceMs: 100,
       });
 
-      const p = adapter.write({theme: 'light', volume: 1}, {}, {version: 1});
+      const p = adapter.write({theme: 'light', volume: 1}, {}, {dataVersion: 1, schemaVersion: 1});
       mock.timers.tick(150);
 
       await assert.doesNotReject(p);
@@ -205,12 +207,12 @@ describe('AsyncAdapter', () => {
       });
 
       // Req A
-      const p1 = adapter.write({theme: 'light', volume: 1}, {}, {version: 1});
+      const p1 = adapter.write({theme: 'light', volume: 1}, {}, {dataVersion: 1, schemaVersion: 1});
       mock.timers.tick(150);
       await new Promise((r) => setImmediate(r));
 
       // Req B
-      const p2 = adapter.write({theme: 'light', volume: 2}, {}, {version: 2});
+      const p2 = adapter.write({theme: 'light', volume: 2}, {}, {dataVersion: 2, schemaVersion: 1});
       mock.timers.tick(100);
       await new Promise((r) => setImmediate(r));
 
@@ -219,7 +221,7 @@ describe('AsyncAdapter', () => {
       assert.ok(call1);
 
       const args1 = call1.arguments as unknown as WriteArgs;
-      assert.deepStrictEqual(args1[2], {version: 1});
+      assert.deepStrictEqual(args1[2], {dataVersion: 1, schemaVersion: 1});
 
       if (resolveFirst) resolveFirst();
       await p1;
@@ -230,7 +232,7 @@ describe('AsyncAdapter', () => {
       assert.ok(call2);
 
       const args2 = call2.arguments as unknown as WriteArgs;
-      assert.deepStrictEqual(args2[2], {version: 2});
+      assert.deepStrictEqual(args2[2], {dataVersion: 2, schemaVersion: 1});
     });
   });
 
@@ -245,10 +247,10 @@ describe('AsyncAdapter', () => {
         concurrency: 'optimistic',
       });
 
-      const p1 = adapter.write({theme: 'light', volume: 1}, {}, {version: 1});
+      const p1 = adapter.write({theme: 'light', volume: 1}, {}, {dataVersion: 1, schemaVersion: 1});
       mock.timers.tick(20);
 
-      const p2 = adapter.write({theme: 'light', volume: 2}, {}, {version: 2});
+      const p2 = adapter.write({theme: 'light', volume: 2}, {}, {dataVersion: 2, schemaVersion: 1});
       mock.timers.tick(20);
 
       await Promise.all([p1, p2]);
@@ -257,10 +259,10 @@ describe('AsyncAdapter', () => {
       assert.strictEqual(slowMock.mock.callCount(), 2, m);
 
       const args1 = slowMock.mock.calls[0]?.arguments as unknown as WriteArgs;
-      assert.deepStrictEqual(args1[2], {version: 1});
+      assert.deepStrictEqual(args1[2], {dataVersion: 1, schemaVersion: 1});
 
       const args2 = slowMock.mock.calls[1]?.arguments as unknown as WriteArgs;
-      assert.deepStrictEqual(args2[2], {version: 2});
+      assert.deepStrictEqual(args2[2], {dataVersion: 2, schemaVersion: 1});
     });
   });
 
@@ -279,7 +281,7 @@ describe('AsyncAdapter', () => {
         debounceMs: 10,
       });
 
-      const p = adapter.write({theme: 'light', volume: 1}, {}, {version: 1});
+      const p = adapter.write({theme: 'light', volume: 1}, {}, {dataVersion: 1, schemaVersion: 1});
       mock.timers.tick(10);
 
       await assert.rejects(p, error);

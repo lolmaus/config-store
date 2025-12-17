@@ -1,25 +1,15 @@
 import {describe, it, mock, beforeEach} from 'node:test';
 import assert from 'node:assert/strict';
 import {BaseAdapter} from './base.js';
-import type {AdapterEnvelope, AdapterWriteResult} from '../types.js';
+import type {AdapterEnvelope, AdapterWriteResult, Meta} from '../types.js';
 
-// Define a simple object shape for testing
-interface TestData {
-  value: string;
-}
-
-// 1. Create a concrete implementation for testing
-class TestAdapter extends BaseAdapter<TestData, number> {
-  async read(): Promise<AdapterEnvelope<TestData, number>> {
-    return {settings: {value: 'default'}, metadata: 1};
+class TestAdapter extends BaseAdapter {
+  async read(): Promise<AdapterEnvelope> {
+    return {config: {value: 'default'}, metadata: {dataVersion: 1, schemaVersion: 1}};
   }
 
-  async write(
-    settings: TestData,
-    _changes: Partial<TestData>,
-    metadata?: number
-  ): Promise<AdapterWriteResult<TestData, number>> {
-    return {settings, metadata};
+  async write(config: unknown, _changes: unknown, metadata?: Meta): Promise<AdapterWriteResult> {
+    return {config, metadata};
   }
 }
 
@@ -36,14 +26,26 @@ describe('BaseAdapter', () => {
       // Validating read()
       const readResult = await adapter.read();
       m = 'Read should return the defined envelope';
-      assert.deepStrictEqual(readResult, {settings: {value: 'default'}, metadata: 1}, m);
+      assert.deepStrictEqual(
+        readResult,
+        {config: {value: 'default'}, metadata: {dataVersion: 1, schemaVersion: 1}},
+        m
+      );
 
       // Validating write()
       // Now we pass a valid object and partial object
-      const writeResult = await adapter.write({value: 'new-val'}, {}, 2);
+      const writeResult = await adapter.write(
+        {value: 'new-val'},
+        {},
+        {dataVersion: 2, schemaVersion: 1}
+      );
 
       m = 'Write should return the defined write result';
-      assert.deepStrictEqual(writeResult, {settings: {value: 'new-val'}, metadata: 2}, m);
+      assert.deepStrictEqual(
+        writeResult,
+        {config: {value: 'new-val'}, metadata: {dataVersion: 2, schemaVersion: 1}},
+        m
+      );
     });
   });
 
@@ -60,7 +62,7 @@ describe('BaseAdapter', () => {
       const args = consoleSpy.mock.calls[0]?.arguments;
 
       m = 'First arg should be a prefix string';
-      assert.match(args?.[0] as string, /\[SettingsManager\]/, m);
+      assert.match(args?.[0] as string, /\[ConfigManager\]/, m);
 
       m = 'Second arg should be the error object';
       assert.strictEqual(args?.[1], error, m);

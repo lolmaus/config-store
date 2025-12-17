@@ -14,7 +14,7 @@ A strict, schema-first config manager designed for long-lived frontend apps. It 
   - `queue`: Sequential execution (for legacy backends).
 - **Framework-agnostic:** The core can be used with vanilla JS or in any framework.
 - **Framewok integrations:** Offers the following integrations:
-  - **React**: Includes a `useSettings` hook with **selector support** (e.g., `s => s.theme`). This allows a component to rerender only when the relevant individual setting changes. Other changes to the config will not cause rerenders.
+  - **React**: Includes a `useConfig` hook with **selector support** (e.g., `s => s.theme`). This allows a component to rerender only when the relevant individual setting changes. Other changes to the config will not cause rerenders.
 
 ⠀
 
@@ -53,7 +53,7 @@ A strict, schema-first config manager designed for long-lived frontend apps. It 
       - [ ] Migration runner logic
       - [ ] Default value fallback
       - [ ] Metadata/Version state management
-      - [ ] Type inference helpers (`InferSettings<T>`)
+      - [ ] Type inference helpers (`InferConfig<T>`)
   - [ ] React
   - [ ] Docs app
 - [ ] Testing
@@ -96,14 +96,14 @@ Support for other frameworks is not planned, but contributions are very welcome.
 
 ### 2.1. Define the manager
 
-In e. g. `src/settings/manager.ts`, instantiate the adapter and pass it to the `SettingsManager`.
+In e. g. `src/settings/manager.ts`, instantiate the adapter and pass it to the `ConfigManager`.
 
 Chain `.addVersion()` to define your schema history.
 
 Make sure to provide default values via Zod to every setting.
 
 ```ts
-import {SettingsManager, LocalStorageAdapter, type InferSettings} from '@lolmaus/config-store';
+import {ConfigManager, LocalStorageAdapter, type InferConfig} from '@lolmaus/config-store';
 import {z} from 'zod';
 
 // 2.1.1. Create your adapter (or import a custom one)
@@ -111,7 +111,7 @@ import {z} from 'zod';
 const adapter = new LocalStorageAdapter({key: 'my-app-settings'});
 
 // 2.1.2. Initialize the manager with the adapter
-export const settingsManager = new SettingsManager({adapter})
+export const ConfigManager = new ConfigManager({adapter})
   // Define Version 1
   .addVersion({
     version: 1,
@@ -139,42 +139,42 @@ export const settingsManager = new SettingsManager({adapter})
     },
   });
 
-// 2.1.3. Export the current settings type
-export type Settings = InferSettings<typeof settingsManager>;
+// 2.1.3. Export the current config type
+export type Config = InferConfig<typeof ConfigManager>;
 ```
 
 ⠀
 
-### 2.2. Wrap your app with the settings provider
+### 2.2. Wrap your app with the config provider
 
-Pass your `settingsManager` instance into the `manager` prop of the provider.
+Pass your `ConfigManager` instance into the `manager` prop of the provider.
 
 ```tsx
-import {SettingsProvider} from '@lolmaus/config-store';
-import {settingsManager} from './settings/manager';
+import {ConfigProvider} from '@lolmaus/config-store';
+import {ConfigManager} from './settings/manager';
 
 export const App = () => (
-  <SettingsProvider value={settingsManager}>
+  <ConfigProvider value={ConfigManager}>
     <Dashboard />
-  </SettingsProvider>
+  </ConfigProvider>
 );
 ```
 
 ⠀
 
-### 2.3. Read settings
+### 2.3. Read config
 
-Use the hook `useSettings` to read settings:
+Use the hook `useConfig` to read config:
 
 ```tsx
-import {useSettings} from '@lolmaus/config-store';
+import {useConfig} from '@lolmaus/config-store';
 
 export const PageWrapper = ({children}) => {
   // Get the entire settings object
-  const settings = useSettings();
+  const config = useConfig();
 
   // Pass a selector to subscribe only to specific changes (renders optimized)
-  const theme = useSettings((s) => s.theme);
+  const theme = useConfig((s) => s.theme);
 
   return <div data-theme={theme}>{children}</div>;
 };
@@ -182,22 +182,22 @@ export const PageWrapper = ({children}) => {
 
 ⠀
 
-### 2.4. Persist settings
+### 2.4. Persist config updates
 
-Use the `useUpdateSettings` hook to update settings:
+Use the `useUpdateConfig` hook to update user settings and persist them:
 
 ```tsx
-import {useUpdateSettings} from '@lolmaus/config-store';
+import {useUpdateConfig} from '@lolmaus/config-store';
 
 export const ThemeToggler = () => {
-  const {update} = useUpdateSettings();
+  const {update} = useUpdateConfig();
 
   // Assuming this will be user input
-  const newPartialSettings = {theme: 'dark'};
+  const newPartialConfig = {theme: 'dark'};
 
   return (
     <div>
-      <button onClick={() => update(newPartialSettings)}>Switch to Dark Mode</button>
+      <button onClick={() => update(newPartialConfig)}>Switch to Dark Mode</button>
     </div>
   );
 };
@@ -211,49 +211,46 @@ While the `LocalStorageAdapter` covers basic use cases, you will often need to p
 
 ⠀
 
-### 3.1 The AsyncSettingsAdapter Helper
+### 3.1 The AsyncAdapter Helper
 
 Writing a robust async adapter from scratch is difficult. You have to handle debouncing (so dragging a slider doesn't DDOS your server), race conditions, and error handling.
 
-We provide a helper class `AsyncSettingsAdapter` that handles this heavy lifting for you. It strictly enforces an "Envelope" pattern (`{ settings, metadata }`) so you can easily handle server-side versioning (e.g. `dataVersion` or `updatedAt`) alongside your data.
+We provide a helper class `AsyncAdapter` that handles this heavy lifting for you. It strictly enforces an "Envelope" pattern (`{ config, metadata }`) so you can easily handle server-side versioning (e.g. `dataVersion` or `updatedAt`) alongside your data.
 
 In e. g. `src/settings/adapter.ts`:
 
 ```ts
-import {AsyncSettingsAdapter} from '@lolmaus/config-store';
+import {AsyncAdapter} from '@lolmaus/config-store';
 
 // Define your metadata shape (optional, defaults to unknown)
 interface MyMeta {
   dataVersion: number;
 }
 
-export const apiAdapter = new AsyncSettingsAdapter<MySettings, MyMeta>({
+export const apiAdapter = new AsyncAdapter<MySettings, MyMeta>({
   // How long to wait after the last change before saving (default: 500ms)
   debounceMs: 500,
 
   // Choose how to handle concurrent save requests
   concurrency: 'abort',
 
-  // READ must return the envelope: { settings, metadata }
+  // READ must return the envelope: { config, metadata }
   read: async () => {
     const res = await fetch('/api/settings');
     if (!res.ok) throw new Error('Failed to fetch');
 
-    // Assuming server returns: { data: { ...settings }, meta: { dataVersion: 1 } }
+    // Assuming server returns: { data: { config, meta } }
     const json = await res.json();
 
-    return {
-      settings: json.data,
-      metadata: json.meta,
-    };
+    return json.data;
   },
 
   // WRITE receives the opaque metadata blob from the manager
   // You should send it back to the server to handle optimistic locking or versioning
-  write: async (settings, _changes, metadata, signal) => {
+  write: async (config, _changes, metadata, signal) => {
     const payload = {
-      data: settings,
-      meta: metadata, // e.g. { dataVersion: 1 }
+      config,
+      metadata, // e.g. { dataVersion: 1, schemaVersion: 1 }
     };
 
     const res = await fetch('/api/settings', {
@@ -267,7 +264,7 @@ export const apiAdapter = new AsyncSettingsAdapter<MySettings, MyMeta>({
 
     // Optional: Return updated metadata/settings from server response
     const json = await res.json();
-    return {metadata: json.meta};
+    return json.data;
   },
 
   onWriteError: (error) => {
@@ -276,12 +273,12 @@ export const apiAdapter = new AsyncSettingsAdapter<MySettings, MyMeta>({
 });
 ```
 
-Then register your adapter with the SettingsManager:
+Then register your adapter with the ConfigManager:
 
 ```ts
 import {apiAdapter} from './adapter';
 
-export const settingsManager = new SettingsManager({adapter});
+export const ConfigManager = new ConfigManager({adapter});
 ```
 
 ⠀
@@ -290,7 +287,7 @@ export const settingsManager = new SettingsManager({adapter});
 
 When a user modifies settings rapidly (e.g., dragging a volume slider), multiple save requests are generated. Network latency can cause these requests to arrive out of order.
 
-The `AsyncSettingsAdapter` supports three strategies via the `concurrency` option to solve this:
+The `AsyncAdapter` supports three strategies via the `concurrency` option to solve this:
 
 ⠀
 
@@ -304,14 +301,14 @@ When a new save starts, the library automatically aborts the previous pending re
 - **Cons:** Backend/Fetch must support `AbortSignal` (Standard `fetch` does).
 
 ```ts
-new AsyncSettingsAdapter({
+new AsyncAdapter({
   concurrency: 'abort', // default
 
-  write: async (settings, _changes, metadata, signal) => {
+  write: async (config, _changes, metadata, signal) => {
     // Pass the signal to fetch!
     await fetch('/api/settings', {
       method: 'POST',
-      body: JSON.stringify({settings, metadata}),
+      body: JSON.stringify({config, metadata}),
       signal,
     });
   },
@@ -326,7 +323,7 @@ new AsyncSettingsAdapter({
 
 The library fires requests immediately. By passing the `metadata` (containing version numbers) in your `write` function, your server can reject outdated writes (e.g., returning `409 Conflict`).
 
-The library treats the `metadata` object as opaque context—it stores it and passes it back to you during writes, allowing you to implement version increments or timestamps without polluting your settings schema.
+The library treats the `metadata` object as opaque context: it stores it and passes it back to you during writes, allowing you to implement version increments or timestamps without polluting your settings schema.
 
 ⠀
 
@@ -340,10 +337,10 @@ The library waits for Request A to finish before sending Request B.
 - **Cons:** Slow. If the network is laggy, the "Save" indicator may spin for a long time.
 
 ```ts
-new AsyncSettingsAdapter({
+new AsyncAdapter({
   concurrency: 'queue',
 
-  write: async (settings) => {
+  write: async (config) => {
     // This will never run in parallel with another write
     await fetch('/api/settings', {
       /*...*/
@@ -354,52 +351,50 @@ new AsyncSettingsAdapter({
 
 ⠀
 
-### 3.3 Handling Backend Responses
+### 3.3 Handling Backend Responses on save
 
 Sometimes, the server modifies the data you sent (sanitization) or updates the metadata (bumping versions).
 
-The `write` function expects a **WriteResult** return type:
+The return type of `write` function is `AdapterWriteResult | void`, where `AdapterWriteResult` is:
 
 ```ts
-type WriteResult<TData, TMeta> = {
-  settings?: TData; // Return this if server sanitized the settings
-  metadata?: TMeta; // Return this if server bumped the version
-} | void;
+ {
+  config?: unknown;
+  metadata?: TMeta;
+}
 ```
 
 Return `void`: The library keeps the "Optimistic Update" (the value the user set).
 
-Return `object`: The library silently updates the store with the data returned from the server.
+Return `AdapterWriteResult`: The library silently updates the store with the data returned from the server.
 
 ```ts
-const apiAdapter = new AsyncSettingsAdapter({
-  write: async (settings, _changes, metadata, signal) => {
+const apiAdapter = new AsyncAdapter({
+  write: async (config, _changes, metadata, signal) => {
     const res = await fetch('/api/settings', {
       /*...*/
     });
+
     const json = await res.json();
 
     // The server sanitized the volume and bumped the version.
-    // We return both so the local store stays in sync.
-    return {
-      settings: json.data,
-      metadata: json.meta,
-    };
+    // Assuming json contains `{ data: { config, metadata }}`
+    return json.data;
   },
 });
 ```
 
-Note: Updates triggered by the adapter's return value are treated as "sync" events. They do not trigger a subsequent save loop.
+Note: A config store update triggered by the adapter's return value will not trigger a subsequent save loop.
 
 ⠀
 
 ### 3.4 Handle loading and error states in the UI
 
 ```tsx
-import {useUpdateSettings} from '@lolmaus/config-store';
+import {useUpdateConfig} from '@lolmaus/config-store';
 
 export const ThemeToggler = () => {
-  const {update, isSaving} = useUpdateSettings();
+  const {update, isSaving} = useUpdateConfig();
 
   const toggle = async (newTheme: string) => {
     try {
@@ -436,25 +431,31 @@ If you know what you're doing, you _can_ bridge them using `queryClient.fetchQue
 
 ### 4.2 Why does the library depend on Zustand?
 
-We use `zustand/vanilla` internally as a micro-dependency (<1kb) to provide a robust implementation of `useSyncExternalStore` and selector support (`useSettings(s => s.theme)`). This prevents unnecessary re-renders that would occur with standard React Context.
+We use `zustand/vanilla` internally as a micro-dependency (<1kb) to provide a robust implementation of `useSyncExternalStore` and selector support (`useConfig(s => s.theme)`). This prevents unnecessary re-renders that would occur with standard React Context.
 
 ⠀
 
 ### 4.3 What's the hassle with migrations?
 
-Settings schemas change (e.g., `boolean` to `enum`). Without migrations, a user returning after 6 months will crash your app because their localStorage data doesn't match your new code. This library centralizes migration logic, keeping your UI code clean and typed strictly to the _latest_ version.
+Config schemas change over time as your project matures. For example, dark theme was managed via `darkTheme: boolean` setting, but now it's `theme: 'dark' | 'light' | 'system'`.
+
+Without migrations, a user returning after 6 months will experience a crash because their localStorage data doesn't match your new code.
+
+`@config-store` lets you define a migration, that will change the user's config to the new format without discarding their preferences.
+
+Migrations are applied transparently, keeping your UI code clean and typed strictly to the _latest_ version.
 
 ⠀
 
 ### 4.4 What happens if I omit a migration?
 
-If `adapter.read()` returns data that does not match the current Zod schema, **Zod will throw a validation error**. The `SettingsManager` catches this error, logs it, and **falls back to default values** to prevent a White Screen of Death.
+If `adapter.read()` returns data that does not match the current Zod schema, **Zod will throw a validation error**. The `ConfigManager` catches this error, logs it, and **falls back to default values** to prevent a White Screen of Death.
 
 ⠀
 
 ### 4.5 How do I reset a setting to its default value?
 
-Pass `undefined` to the update hook: `updateSettings({ theme: undefined })`. Zod will apply the `.default()` value defined in your schema.
+Pass `undefined` to the update hook: `updateConfig({ theme: undefined })`. Zod will apply the `.default()` value defined in your schema.
 
 ⠀
 
@@ -462,12 +463,16 @@ Pass `undefined` to the update hook: `updateSettings({ theme: undefined })`. Zod
 
 This project uses **TurboRepo** and **pnpm**.
 
+⠀
+
 ### 5.1 Setup
 
 ```bash
 # Install dependencies
 pnpm install
 ```
+
+⠀
 
 ### 5.2 Running Tests
 
@@ -481,12 +486,16 @@ pnpm test
 pnpm test -- --watch
 ```
 
+⠀
+
 ### 5.3 Building
 
 ```bash
 # Build all packages
 pnpm build
 ```
+
+⠀
 
 ### 5.4 Versioning and Publishing
 
