@@ -1,11 +1,11 @@
 // packages/core/src/adapters/base.ts
-import type {AdapterEnvelope, AdapterWriteResult} from '../types.js';
+import type {AdapterEnvelope, AdapterWriteResult, Meta} from '../types.js';
 
-export abstract class BaseAdapter<TData = unknown, TMeta = unknown> {
+export abstract class BaseAdapter<TMeta extends Meta = Meta> {
   /**
    * Retrieves the current settings and optional metadata.
    */
-  abstract read(): Promise<AdapterEnvelope<TData, TMeta>>;
+  abstract read(): AdapterEnvelope<TMeta> | void | Promise<AdapterEnvelope<TMeta> | void>;
 
   /**
    * Persists changes.
@@ -14,15 +14,15 @@ export abstract class BaseAdapter<TData = unknown, TMeta = unknown> {
    * @param metadata - The opaque metadata (e.g. dataVersion) from the Manager.
    */
   abstract write(
-    settings: TData,
-    changes: Partial<TData>,
+    config: unknown,
+    changes: unknown,
     metadata?: TMeta
-  ): Promise<AdapterWriteResult<TData, TMeta>>;
+  ): AdapterWriteResult<TMeta> | void | Promise<AdapterWriteResult<TMeta> | void>;
 
   /**
    * Optional hook for handling errors (logging, toasts, etc).
    */
   onWriteError(error: unknown): void {
-    console.error('[SettingsManager] Write failed:', error);
+    console.error('[ConfigManager] Write failed:', error);
   }
 }

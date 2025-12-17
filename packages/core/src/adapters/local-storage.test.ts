@@ -1,17 +1,14 @@
 import {describe, it, mock, beforeEach, afterEach, type Mock} from 'node:test';
 import assert from 'node:assert/strict';
 import {LocalStorageAdapter} from './local-storage.js';
+import type {Meta} from '../types.js';
 
-interface TestSettings {
+interface TestConfig {
   theme: 'light' | 'dark';
 }
 
-interface TestMeta {
-  version: number;
-}
-
 describe('LocalStorageAdapter', () => {
-  let adapter: LocalStorageAdapter<TestSettings, TestMeta>;
+  let adapter: LocalStorageAdapter<TestConfig>;
   let m: string;
 
   // Mock storage methods
@@ -42,48 +39,30 @@ describe('LocalStorageAdapter', () => {
   });
 
   describe('read()', () => {
-    it('returns undefined settings if storage is empty', async () => {
+    it('returns undefined settings if storage is empty', () => {
       // getItemMock returns null by default
 
-      const result = await adapter.read();
+      const result = adapter.read();
 
       m = 'Should return undefined settings for null storage';
-      assert.deepStrictEqual(result, {settings: undefined}, m);
+      assert.deepStrictEqual(result, undefined, m);
     });
 
-    it('parses a valid envelope (Settings + Metadata)', async () => {
+    it('parses a valid envelope (Settings + Metadata)', () => {
       const storedData = JSON.stringify({
-        settings: {theme: 'dark'},
-        metadata: {version: 5},
+        config: {theme: 'dark'},
+        metadata: {dataVersion: 5, schemaVersion: 1},
       });
       getItemMock.mock.mockImplementation(() => storedData);
 
-      const result = await adapter.read();
+      const result = adapter.read();
 
       m = 'Should correctly parse the envelope structure';
       assert.deepStrictEqual(
         result,
         {
-          settings: {theme: 'dark'},
-          metadata: {version: 5},
-        },
-        m
-      );
-    });
-
-    it('handles "Legacy" data (Raw Settings without Envelope)', async () => {
-      // Simulate data saved by an older version of the lib (or a different tool)
-      const rawSettings = JSON.stringify({theme: 'light'});
-      getItemMock.mock.mockImplementation(() => rawSettings);
-
-      const result = await adapter.read();
-
-      m = 'Should treat raw JSON as settings and metadata as undefined';
-      assert.deepStrictEqual(
-        result,
-        {
-          settings: {theme: 'light'},
-          metadata: undefined,
+          config: {theme: 'dark'},
+          metadata: {dataVersion: 5, schemaVersion: 1},
         },
         m
       );
@@ -95,16 +74,16 @@ describe('LocalStorageAdapter', () => {
       const result = await adapter.read();
 
       m = 'Should gracefully handle parse errors';
-      assert.deepStrictEqual(result, {settings: undefined}, m);
+      assert.deepStrictEqual(result, undefined, m);
     });
   });
 
   describe('write()', () => {
     it('wraps settings and metadata in an envelope before saving', async () => {
-      const settings: TestSettings = {theme: 'dark'};
-      const metadata: TestMeta = {version: 2};
+      const config: TestConfig = {theme: 'dark'};
+      const metadata: Meta = {dataVersion: 2, schemaVersion: 1};
 
-      await adapter.write(settings, {}, metadata);
+      await adapter.write(config, {}, metadata);
 
       m = 'setItem should be called once';
       assert.strictEqual(setItemMock.mock.callCount(), 1, m);
@@ -120,20 +99,20 @@ describe('LocalStorageAdapter', () => {
       const parsed = JSON.parse(value as string);
 
       m = 'Saved JSON should be the full envelope';
-      assert.deepStrictEqual(parsed, {settings, metadata}, m);
+      assert.deepStrictEqual(parsed, {config, metadata}, m);
     });
 
     it('handles writes without metadata', async () => {
-      const settings: TestSettings = {theme: 'light'};
+      const config: TestConfig = {theme: 'light'};
 
-      await adapter.write(settings, {}, undefined);
+      await adapter.write(config, {}, undefined);
 
       const value = setItemMock.mock.calls[0]?.arguments?.[1] as string;
       const parsed = JSON.parse(value);
 
       m =
         'Envelope should contain only settings (metadata undefined is stripped by JSON.stringify)';
-      assert.deepStrictEqual(parsed, {settings}, m);
+      assert.deepStrictEqual(parsed, {config}, m);
     });
   });
 });
