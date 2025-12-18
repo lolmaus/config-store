@@ -36,7 +36,7 @@ A strict, schema-first config manager designed for long-lived frontend apps. It 
     - [x] Release npm packages with Changesets
   - [ ] lefthook for pre-commit checks
 - [ ] Packages
-  - [ ] Core
+  - [x] Core
     - [x] Adapters
       - [x] Base
       - [x] Local Storage
@@ -47,7 +47,7 @@ A strict, schema-first config manager designed for long-lived frontend apps. It 
           - [x] Default (relies on AbortSignal)
           - [x] dataVersion
           - [x] sequential
-    - [ ] Config Manger
+    - [x] Config Manger
       - [x] Schema definition via Zod
       - [x] `addVersion` / Schema History API
       - [x] Migration runner logic
@@ -61,7 +61,7 @@ A strict, schema-first config manager designed for long-lived frontend apps. It 
         - [x] Concurrent requests from burst-clicking
         - [x] Concurrent requests from different tabs/devices
         - [x] Saved schema is higher than current latest schema
-      - [ ] Barrel file `index.ts`
+    - [x] Barrel file `index.ts`
   - [ ] React
   - [ ] Docs app
 - [ ] Testing
