@@ -1,18 +1,14 @@
 import {describe, it, mock, beforeEach} from 'node:test';
 import assert from 'node:assert/strict';
 import {BaseAdapter} from './base.js';
-import type {AdapterEnvelope, AdapterWriteResult, Meta} from '../types.js';
+import type {AdapterEnvelope, Meta} from '../types.js';
 
 class TestAdapter extends BaseAdapter {
   async read(): Promise<AdapterEnvelope> {
     return {config: {value: 'default'}, metadata: {dataVersion: 1, schemaVersion: 1}};
   }
 
-  async write(
-    nextConfig: unknown,
-    _lastSavedConfig: unknown,
-    metadata?: Meta
-  ): Promise<AdapterWriteResult> {
+  async write(nextConfig: unknown, metadata: Meta): Promise<AdapterEnvelope> {
     return {config: nextConfig, metadata};
   }
 }
@@ -40,7 +36,6 @@ describe('BaseAdapter', () => {
       // Now we pass a valid object and partial object
       const writeResult = await adapter.write(
         {value: 'new-val'},
-        {},
         {dataVersion: 2, schemaVersion: 1}
       );
 

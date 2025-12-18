@@ -1,7 +1,7 @@
 import {describe, it, mock, beforeEach, afterEach, type Mock} from 'node:test';
 import assert from 'node:assert/strict';
 import {AsyncAdapter, type AsyncAdapterOptions} from './async.js';
-import type {AdapterWriteResult, Meta} from '../types.js';
+import type {AdapterEnvelope, Meta} from '../types.js';
 
 interface TestConfig {
   theme: 'light' | 'dark';
@@ -43,7 +43,7 @@ describe('AsyncAdapter', () => {
         dataVersion: storedMeta.dataVersion + 1,
       };
 
-      return {metadata: storedMeta};
+      return {config: next, metadata: storedMeta};
     });
 
     adapter = new AsyncAdapter({
@@ -120,7 +120,17 @@ describe('AsyncAdapter', () => {
       );
 
       m = 'Should return the exact object provided by writeMock';
-      assert.deepStrictEqual(result, {metadata: {dataVersion: 2, schemaVersion: 1}}, m);
+      assert.deepStrictEqual(
+        result,
+        {
+          config: {
+            theme: 'dark',
+            volume: 50,
+          },
+          metadata: {dataVersion: 2, schemaVersion: 1},
+        },
+        m
+      );
 
       m = 'Closure state should have been updated';
       assert.deepStrictEqual(storedConfig, {theme: 'dark', volume: 50}, m);
@@ -142,11 +152,11 @@ describe('AsyncAdapter', () => {
     });
 
     it('aborts the previous pending request signal', async () => {
-      let resolveFirst: ((value: AdapterWriteResult) => void) | undefined;
+      let resolveFirst: ((value: AdapterEnvelope) => void) | undefined;
 
       const slowMock: Mock<AsyncAdapterOptions['write']> = mock.fn(async () => {
         if (!resolveFirst) {
-          return new Promise<AdapterWriteResult>((resolve) => {
+          return new Promise<AdapterEnvelope>((resolve) => {
             resolveFirst = resolve;
           });
         }
@@ -181,7 +191,11 @@ describe('AsyncAdapter', () => {
       m = 'Signal A should be aborted after second write call';
       assert.strictEqual(signalA.aborted, true, m);
 
-      if (resolveFirst) resolveFirst({metadata: {dataVersion: 2, schemaVersion: 1}});
+      if (resolveFirst)
+        resolveFirst({
+          config: {theme: 'light', volume: 1},
+          metadata: {dataVersion: 2, schemaVersion: 1},
+        });
       await p1;
       await p2;
     });

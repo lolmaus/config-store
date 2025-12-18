@@ -1,5 +1,5 @@
 import {BaseAdapter} from './base.js';
-import type {AdapterWriteResult, AdapterEnvelope, Meta} from '../types.js';
+import type {AdapterEnvelope, Meta} from '../types.js';
 
 export type ConcurrencyStrategy = 'abort' | 'optimistic' | 'queue';
 
@@ -14,7 +14,7 @@ export interface AsyncAdapterOptions {
     lastCommittedConfig: unknown | undefined,
     metadata: Meta | undefined,
     signal?: AbortSignal
-  ) => Promise<AdapterWriteResult | void>;
+  ) => Promise<AdapterEnvelope | void>;
 
   onWriteError?: (error: unknown) => void;
   concurrency?: ConcurrencyStrategy;
@@ -52,7 +52,7 @@ export class AsyncAdapter extends BaseAdapter {
     return envelope;
   }
 
-  async write(nextConfig: unknown, metadata: Meta): Promise<AdapterWriteResult | void> {
+  async write(nextConfig: unknown, metadata: Meta): Promise<AdapterEnvelope | void> {
     const {concurrency = 'abort'} = this.options;
 
     try {
@@ -72,7 +72,7 @@ export class AsyncAdapter extends BaseAdapter {
     nextConfig: unknown,
     metadata: Meta | undefined,
     strategy: ConcurrencyStrategy
-  ): Promise<AdapterWriteResult | void> {
+  ): Promise<AdapterEnvelope | void> {
     const runWrite = async (signal?: AbortSignal) => {
       // 1. Pass 'this.lastCommitted' (Server Truth) to the user
       const result = await this.options.write(nextConfig, this.lastCommitted, metadata, signal);
