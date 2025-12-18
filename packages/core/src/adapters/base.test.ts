@@ -8,8 +8,12 @@ class TestAdapter extends BaseAdapter {
     return {config: {value: 'default'}, metadata: {dataVersion: 1, schemaVersion: 1}};
   }
 
-  async write(config: unknown, _changes: unknown, metadata?: Meta): Promise<AdapterWriteResult> {
-    return {config, metadata};
+  async write(
+    nextConfig: unknown,
+    _lastSavedConfig: unknown,
+    metadata?: Meta
+  ): Promise<AdapterWriteResult> {
+    return {config: nextConfig, metadata};
   }
 }
 

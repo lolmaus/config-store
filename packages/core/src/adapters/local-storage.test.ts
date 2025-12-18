@@ -93,7 +93,7 @@ describe('LocalStorageAdapter', () => {
       const config: TestConfig = {theme: 'dark'};
       const metadata: Meta = {dataVersion: 2, schemaVersion: 1};
 
-      await adapter.write(config, {}, metadata);
+      await adapter.write(config, metadata);
 
       m = 'setItem should be called once';
       assert.strictEqual(setItemMock.mock.callCount(), 1, m);

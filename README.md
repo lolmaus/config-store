@@ -8,7 +8,7 @@ A strict, schema-first config manager designed for long-lived frontend apps. It 
 - **Migrations:** As your schema changes, define migration functions to automatically update a user's config to conform to the new schema. This process is transparent to the consuming app.
 - **Fail-Safe:** Malformed configs that cannot be migrated are swapped with schema defaults and overwrite the invalid data on the next save.
 - **Flexible Adapters:** Ships with a `LocalStorageAdapter` and a robust `AsyncAdapter` (for REST APIs). You can easily define custom adapters for other protocols (e.g., WebSocket, IndexedDB).
-- **Concurrency Control:** The `AsyncAdapter` handles debouncing and provides three strategies for parallel writes:
+- **Concurrency Control:** The `AsyncAdapter` provides three strategies for parallel writes:
   - `abort`: Cancels previous pending requests (default, relies on AbortController).
   - `optimistic`: Sends all requests but handles `409 Conflict` via versioning (requires backend logic).
   - `queue`: Sequential execution (for legacy backends).
@@ -41,7 +41,7 @@ A strict, schema-first config manager designed for long-lived frontend apps. It 
       - [x] Base
       - [x] Local Storage
       - [x] Async
-        - [x] Debouncing
+        - [x] ~~Debouncing~~
         - [x] AbortSignal
         - [x] Concurrency
           - [x] Default (relies on AbortSignal)
@@ -225,7 +225,7 @@ While the `LocalStorageAdapter` covers basic use cases, you will often need to p
 
 ### 3.1 The AsyncAdapter Helper
 
-Writing a robust async adapter from scratch is difficult. You have to handle debouncing (so dragging a slider doesn't DDOS your server), race conditions, and error handling.
+Writing a robust async adapter from scratch is difficult. You have to handle race conditions (concurrent HTTP requests when dragging a slider or burst-clicking a button), as weel as error handling.
 
 We provide a helper class `AsyncAdapter` that handles this heavy lifting for you. It strictly enforces an "Envelope" pattern (`{ config, metadata }`) so you can easily handle server-side versioning (e.g. `dataVersion` or `updatedAt`) alongside your data.
 
@@ -240,9 +240,6 @@ interface MyMeta {
 }
 
 export const apiAdapter = new AsyncAdapter<MySettings, MyMeta>({
-  // How long to wait after the last change before saving (default: 500ms)
-  debounceMs: 500,
-
   // Choose how to handle concurrent save requests
   concurrency: 'abort',
 

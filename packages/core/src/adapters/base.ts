@@ -9,13 +9,12 @@ export abstract class BaseAdapter {
 
   /**
    * Persists changes.
-   * @param settings - The full settings object.
-   * @param changes - The partial changes triggering this update.
+   * @param nextConfig - The full settings object.
+   * @param lastSavedConfig - The previus saved state of the settings. Useful to compute a diff for PATCH requests.
    * @param metadata - The opaque metadata (e.g. dataVersion) from the Manager.
    */
   abstract write(
-    config: unknown,
-    changes: unknown,
+    nextConfig: unknown,
     metadata: Meta
   ): AdapterWriteResult | void | Promise<AdapterWriteResult | void>;
 
