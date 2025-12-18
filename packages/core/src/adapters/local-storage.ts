@@ -1,5 +1,5 @@
 import {BaseAdapter} from './base.js';
-import type {AdapterEnvelope, AdapterWriteResult, Meta} from '../types.js';
+import type {AdapterEnvelope, Meta} from '../types.js';
 
 export interface LocalStorageAdapterOptions {
   key: string;
@@ -30,7 +30,7 @@ export class LocalStorageAdapter extends BaseAdapter {
     }
   }
 
-  write(nextConfig: unknown, metadata: Meta): AdapterWriteResult | void {
+  write(nextConfig: unknown, metadata: Meta): AdapterEnvelope | void {
     if (typeof localStorage === 'undefined') return;
 
     const payload: AdapterEnvelope = {

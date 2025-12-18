@@ -7,8 +7,8 @@ import {BaseAdapter} from './adapters/base.js';
 
 class MockAdapter extends BaseAdapter {
   state: AdapterEnvelope | undefined = undefined;
-  read = mock.fn(async () => this.state);
-  write = mock.fn(async (nextConfig, metadata) => {
+  read = mock.fn(() => this.state);
+  write = mock.fn((nextConfig, metadata): AdapterEnvelope | void => {
     this.state = {config: nextConfig, metadata};
     return this.state;
   });
@@ -225,16 +225,16 @@ describe('ConfigManager', () => {
           ConfigManager.create(adapter)
             .addVersion({
               version: 1,
-              schema: z.object({val: z.number()}),
+              schema: z.object({val: z.number().default(0)}).prefault({}),
             })
             .addVersion({
               version: 3,
-              schema: z.object({val: z.number()}),
+              schema: z.object({val: z.number().default(1)}).prefault({}),
               migration: (prev) => ({val: prev.val + 1}), // 1 -> 2
             })
             .addVersion({
               version: 2,
-              schema: z.object({val: z.number()}),
+              schema: z.object({val: z.number().default(10)}).prefault({}),
               migration: (prev) => ({val: prev.val * 10}), // 2 -> 20
             });
         },
@@ -244,34 +244,71 @@ describe('ConfigManager', () => {
     });
   });
 
-  describe('Updates (set)', () => {
-    // it.skip('updates the state and persists via the adapter', async () => {
-    //   const manager = ConfigManager.create(adapter).addVersion({
-    //     version: 1,
-    //     schema: z.object({theme: z.string().default('light')}),
-    //   });
-    //   await manager.load();
-    //   // Act
-    //   await manager.set({theme: 'dark'});
-    //   // Assert State
-    //   assert.deepStrictEqual(manager.get(), {theme: 'dark'});
-    // });
-    // it.skip('resets a value to default if undefined is passed', async () => {
-    //   manager = new ConfigManager({adapter}).addVersion({
-    //     version: 1,
-    //     schema: z.object({
-    //       theme: z.string().default('light'),
-    //       volume: z.number().default(50),
-    //     }),
-    //   });
-    //   await manager.load();
-    //   await manager.set({volume: 100}); // Change it first
-    //   // Act: Reset to default
-    //   await manager.set({volume: undefined});
-    //   // Assert
-    //   assert.strictEqual(manager.get().volume, 50);
-    //   const [config] = adapter.write.mock.calls[1].arguments; // 2nd call
-    //   assert.strictEqual(config.volume, 50);
-    // });
+  describe('Updates (save)', () => {
+    it('updates the state and persists via the adapter that returns the exact config and meta', async () => {
+      const manager = ConfigManager.create(adapter).addVersion({
+        version: 1,
+        schema: z.object({theme: z.string().default('light')}).prefault({}),
+      });
+
+      await manager.load();
+      await manager.save({theme: 'dark'});
+
+      m = 'Manager store';
+      assert.deepStrictEqual(manager.get(), {theme: 'dark'}, m);
+
+      m = 'Adapter store';
+      assert.deepStrictEqual(adapter.state?.config, {theme: 'dark'}, m);
+    });
+
+    it('updates the state and persists via the adapter that returns void', async () => {
+      adapter.write = mock.fn(function (this: typeof adapter, nextConfig, metadata) {
+        this.state = {config: nextConfig, metadata};
+      });
+
+      const manager = ConfigManager.create(adapter).addVersion({
+        version: 1,
+        schema: z.object({theme: z.string().default('light')}).prefault({}),
+      });
+
+      await manager.load();
+      await manager.save({theme: 'dark'});
+
+      m = 'Manager store';
+      assert.deepStrictEqual(manager.get(), {theme: 'dark'}, m);
+
+      m = 'Adapter store';
+      assert.deepStrictEqual(adapter.state?.config, {theme: 'dark'}, m);
+    });
+
+    it('updates the state and persists via the adapter that returns an updated config and meta', async () => {
+      adapter.write = mock.fn(function (this: typeof adapter, nextConfig, metadata) {
+        this.state = {
+          config: {theme: nextConfig.theme.toUpperCase()},
+          metadata: {...metadata, dataVersion: metadata.dataVersion + 10},
+        };
+        return this.state;
+      });
+
+      const manager = ConfigManager.create(adapter).addVersion({
+        version: 1,
+        schema: z.object({theme: z.string().default('light')}).prefault({}),
+      });
+
+      await manager.load();
+      await manager.save({theme: 'dark'});
+
+      m = 'Manager store';
+      assert.deepStrictEqual(manager.get(), {theme: 'DARK'}, m);
+
+      m = 'Adapter store';
+      assert.deepStrictEqual(adapter.state?.config, {theme: 'DARK'}, m);
+
+      m = 'Manager metadata.dataVersion';
+      assert.deepStrictEqual(manager.metadata.dataVersion, 11, m);
+
+      m = 'Adapter metadata.dataVersion';
+      assert.deepStrictEqual(adapter.state?.metadata.dataVersion, 11, m);
+    });
   });
 });

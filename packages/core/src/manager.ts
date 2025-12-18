@@ -12,7 +12,7 @@ export class ConfigManager<TCurrent = undefined> {
   protected versions: VersionDef<any, any>[]; // eslint-disable-line @typescript-eslint/no-explicit-any
   protected schema?: z.ZodType<TCurrent>;
   protected store: StoreApi<TCurrent>;
-  protected metadata: Meta;
+  public metadata: Meta;
 
   // ------------------------
   // Constructor
@@ -85,16 +85,29 @@ export class ConfigManager<TCurrent = undefined> {
     this.store.setState(migratedEnvelope.config as TCurrent);
   }
 
-  // async save(config: TCurrent): Promise<TCurrent> {
-  //   this.store.setState(config);
+  async save(config: TCurrent): Promise<TCurrent> {
+    this.store.setState(config);
 
-  //   this.metadata.dataVersion++;
+    this.metadata.dataVersion++;
 
-  //   try {
-  //     await this.adapter.write()
-  //   }
+    try {
+      const responseEnvelope: AdapterEnvelope | void = await this.adapter.write(
+        config,
+        this.metadata
+      );
 
-  // }
+      if (responseEnvelope) {
+        if (responseEnvelope.metadata.schemaVersion <= this.metadata.schemaVersion) {
+          const migratedEnvelope: AdapterEnvelope = this.migrate(responseEnvelope);
+          this.metadata.dataVersion = responseEnvelope.metadata.dataVersion;
+          this.store.setState(migratedEnvelope.config as TCurrent);
+          return migratedEnvelope.config as TCurrent;
+        } else {
+          // ToDo: Handle schemaVersion mismatch
+        }
+      }
+    } catch (e) {}
+  }
 
   // ------------------------
   // Private methods

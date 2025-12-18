@@ -18,12 +18,6 @@ export interface AdapterEnvelope {
 }
 
 /**
- * The Loose Contract for Writes
- * A write result is just a partial update of the envelope.
- */
-export type AdapterWriteResult = Partial<AdapterEnvelope>;
-
-/**
  * Descriptor of a schema version
  */
 export interface VersionDef<TPrev, TNext> {

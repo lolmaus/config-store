@@ -1,5 +1,5 @@
 // packages/core/src/adapters/base.ts
-import type {AdapterEnvelope, AdapterWriteResult, Meta} from '../types.js';
+import type {AdapterEnvelope, Meta} from '../types.js';
 
 export abstract class BaseAdapter {
   /**
@@ -16,7 +16,7 @@ export abstract class BaseAdapter {
   abstract write(
     nextConfig: unknown,
     metadata: Meta
-  ): AdapterWriteResult | void | Promise<AdapterWriteResult | void>;
+  ): AdapterEnvelope | void | Promise<AdapterEnvelope | void>;
 
   /**
    * Optional hook for handling errors (logging, toasts, etc).

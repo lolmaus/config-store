@@ -364,18 +364,18 @@ new AsyncAdapter({
 
 Sometimes, the server modifies the data you sent (sanitization) or updates the metadata (bumping versions).
 
-The return type of `write` function is `AdapterWriteResult | void`, where `AdapterWriteResult` is:
+The return type of `write` function is `AdapterEnvelope | void`, where `AdapterEnvelope` is:
 
 ```ts
- {
-  config?: unknown;
-  metadata?: TMeta;
+{
+  config: unknown;
+  metadata: TMeta;
 }
 ```
 
 Return `void`: The library keeps the "Optimistic Update" (the value the user set).
 
-Return `AdapterWriteResult`: The library silently updates the store with the data returned from the server.
+Return `AdapterEnvelope`: The library silently updates the store with the data returned from the server.
 
 ```ts
 const apiAdapter = new AsyncAdapter({
