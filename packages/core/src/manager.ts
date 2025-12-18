@@ -1,7 +1,8 @@
 import z, {type ZodType} from 'zod';
 import type {BaseAdapter} from './adapters/base.js';
-import type {AdapterEnvelope, Meta, VersionDef} from './types.js';
+import {type AdapterEnvelope, type Meta, type VersionDef} from './types.js';
 import {createStore, type StoreApi} from 'zustand/vanilla';
+import {ConfigSchemaOutdatedError, ConfigConflictError} from './errors.js';
 
 export class ConfigManager<TCurrent = undefined> {
   // ------------------------
@@ -86,27 +87,77 @@ export class ConfigManager<TCurrent = undefined> {
   }
 
   async save(config: TCurrent): Promise<TCurrent> {
+    // 1. Snapshot previous state for potential rollback
+    const previousConfig = this.store.getState();
+    const previousMetadata = {...this.metadata};
+
+    // 2. Optimistic Update
+    // We increment the version locally and update the store immediately
+    this.metadata = {
+      ...this.metadata,
+      dataVersion: this.metadata.dataVersion + 1,
+    };
+    const optimisticMetadata = {...this.metadata};
+
     this.store.setState(config);
 
-    this.metadata.dataVersion++;
-
     try {
+      // 3. Attempt Persistence
       const responseEnvelope: AdapterEnvelope | void = await this.adapter.write(
         config,
-        this.metadata
+        optimisticMetadata
       );
 
+      // 4. Handle Success Response
+      // If adapter returns a body, we accept it as the new truth (e.g. server sanitization)
       if (responseEnvelope) {
-        if (responseEnvelope.metadata.schemaVersion <= this.metadata.schemaVersion) {
-          const migratedEnvelope: AdapterEnvelope = this.migrate(responseEnvelope);
-          this.metadata.dataVersion = responseEnvelope.metadata.dataVersion;
-          this.store.setState(migratedEnvelope.config as TCurrent);
-          return migratedEnvelope.config as TCurrent;
-        } else {
-          // ToDo: Handle schemaVersion mismatch
+        if (responseEnvelope.metadata.schemaVersion > this.metadata.schemaVersion) {
+          throw new ConfigSchemaOutdatedError(
+            responseEnvelope.metadata.schemaVersion,
+            this.metadata.schemaVersion
+          );
         }
+
+        const migratedEnvelope: AdapterEnvelope = this.migrate(responseEnvelope);
+        this.metadata.dataVersion = responseEnvelope.metadata.dataVersion;
+        this.store.setState(migratedEnvelope.config as TCurrent);
+        return migratedEnvelope.config as TCurrent;
+      } else {
+        return config;
       }
-    } catch (e) {}
+    } catch (error) {
+      // 5. Handle Errors
+
+      // Check for Stale Request:
+      // If the manager's dataVersion is HIGHER than what we sent in this request,
+      // it means a newer save() has already started/completed.
+      // We should ignore this error to avoid reverting the newer state.
+      if (this.metadata.dataVersion > optimisticMetadata.dataVersion) {
+        return this.store.getState();
+      }
+
+      // Handle Conflict (Server has newer data)
+      if (error instanceof ConfigConflictError) {
+        // Heal: We accept the server's data
+        const migratedEnvelope = this.migrate(error.serverEnvelope);
+        this.metadata = migratedEnvelope.metadata;
+        this.store.setState(migratedEnvelope.config as TCurrent);
+        return migratedEnvelope.config as TCurrent;
+      }
+
+      // Cannot recorver from outdated schema
+      if (error instanceof ConfigSchemaOutdatedError) {
+        throw error;
+      }
+
+      // Handle Generic Error (Network, etc)
+      // Rollback: Revert to the state before this request started
+      this.metadata = previousMetadata;
+      this.store.setState(previousConfig);
+
+      // Return the restored config (swallowing the error)
+      return previousConfig;
+    }
   }
 
   // ------------------------

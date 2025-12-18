@@ -13,7 +13,7 @@ A strict, schema-first config manager designed for long-lived frontend apps. It 
   - `optimistic`: Sends all requests but handles `409 Conflict` via versioning (requires backend logic).
   - `queue`: Sequential execution (for legacy backends).
 - **Framework-agnostic:** The core can be used with vanilla JS or in any framework.
-- **Framewok integrations:** Offers the following integrations:
+- **Framework integrations:** Offers the following integrations:
   - **React**: Includes a `useConfig` hook with **selector support** (e.g., `s => s.theme`). This allows a component to rerender only when the relevant individual setting changes. Other changes to the config will not cause rerenders.
 
 ⠀
@@ -56,7 +56,12 @@ A strict, schema-first config manager designed for long-lived frontend apps. It 
       - [x] Type inference helper (`InferConfig<T>`)
       - [x] Zustand store
       - [x] Retrieving config from the manager
-      - [ ] Updating config
+      - [x] Updating config
+      - [x] Error handling
+        - [x] Concurrent requests from burst-clicking
+        - [x] Concurrent requests from different tabs/devices
+        - [x] Saved schema is higher than current latest schema
+      - [ ] Barrel file `index.ts`
   - [ ] React
   - [ ] Docs app
 - [ ] Testing
@@ -105,13 +110,13 @@ In e. g. `src/settings/manager.ts`, instantiate the adapter and pass it to the `
 
 Chain `.addVersion()` to define your schema history.
 
-⚠️ Important: the Zod schema is used as the source of truth for config defaults. It should be able to handle `undefind` as input and produce a valid default config. For this to be possible:
+⚠️ Important: the Zod schema is used as the source of truth for config defaults. It should be able to handle `undefined` as input and produce a valid default config. For this to be possible:
 
 - You must provide [.default()](https://zod.dev/api?id=defaults) values for every property in your schema.
 - You must attach [.prefault({})](https://zod.dev/api?id=prefaults) to the root `z.object()`.
 
 ```ts
-import {ConfigManager, LocalStorageAdapter, type InferConfig} from '@lolmaus/config-store';
+import {ConfigManager, LocalStorageAdapter, type InferConfig} from '@config-store/core';
 import {z} from 'zod';
 
 // 2.1.1. Create your adapter (or import a custom one)
@@ -119,7 +124,7 @@ import {z} from 'zod';
 const adapter = new LocalStorageAdapter({key: 'my-app-settings'});
 
 // 2.1.2. Initialize the manager with the adapter
-export const ConfigManager = new ConfigManager({adapter})
+export const ConfigManager = ConfigManager.create(adapter)
   // Define Version 1
   .addVersion({
     version: 1,
@@ -162,7 +167,7 @@ export type Config = InferConfig<typeof ConfigManager>;
 Pass your `ConfigManager` instance into the `manager` prop of the provider.
 
 ```tsx
-import {ConfigProvider} from '@lolmaus/config-store';
+import {ConfigProvider} from '@config-store/core';
 import {ConfigManager} from './settings/manager';
 
 export const App = () => (
@@ -179,7 +184,7 @@ export const App = () => (
 Use the hook `useConfig` to read config:
 
 ```tsx
-import {useConfig} from '@lolmaus/config-store';
+import {useConfig} from '@config-store/react';
 
 export const PageWrapper = ({children}) => {
   // Get the entire settings object
@@ -199,7 +204,7 @@ export const PageWrapper = ({children}) => {
 Use the `useUpdateConfig` hook to update user settings and persist them:
 
 ```tsx
-import {useUpdateConfig} from '@lolmaus/config-store';
+import {useUpdateConfig} from '@config-store/react';
 
 export const ThemeToggler = () => {
   const {update} = useUpdateConfig();
@@ -225,14 +230,14 @@ While the `LocalStorageAdapter` covers basic use cases, you will often need to p
 
 ### 3.1 The AsyncAdapter Helper
 
-Writing a robust async adapter from scratch is difficult. You have to handle race conditions (concurrent HTTP requests when dragging a slider or burst-clicking a button), as weel as error handling.
+Writing a robust async adapter from scratch is difficult. You have to handle race conditions (concurrent HTTP requests when dragging a slider or burst-clicking a button), as well as error handling.
 
 We provide a helper class `AsyncAdapter` that handles this heavy lifting for you. It strictly enforces an "Envelope" pattern (`{ config, metadata }`) so you can easily handle server-side versioning (e.g. `dataVersion` or `updatedAt`) alongside your data.
 
 In e. g. `src/settings/adapter.ts`:
 
 ```ts
-import {AsyncAdapter} from '@lolmaus/config-store';
+import {AsyncAdapter} from '@config-store/core';
 
 // Define your metadata shape (optional, defaults to unknown)
 interface MyMeta {
@@ -256,7 +261,7 @@ export const apiAdapter = new AsyncAdapter<MySettings, MyMeta>({
 
   // WRITE receives the opaque metadata blob from the manager
   // You should send it back to the server to handle optimistic locking or versioning
-  write: async (config, _changes, metadata, signal) => {
+  write: async (config, _lastCommittedConfig, metadata, signal) => {
     const payload = {
       config,
       metadata, // e.g. { dataVersion: 1, schemaVersion: 1 }
@@ -287,7 +292,7 @@ Then register your adapter with the ConfigManager:
 ```ts
 import {apiAdapter} from './adapter';
 
-export const ConfigManager = new ConfigManager({adapter});
+export const ConfigManager = ConfigManager.create(adapter);
 ```
 
 ⠀
@@ -313,7 +318,7 @@ When a new save starts, the library automatically aborts the previous pending re
 new AsyncAdapter({
   concurrency: 'abort', // default
 
-  write: async (config, _changes, metadata, signal) => {
+  write: async (config, _lastCommittedConfig, metadata, signal) => {
     // Pass the signal to fetch!
     await fetch('/api/settings', {
       method: 'POST',
@@ -379,7 +384,7 @@ Return `AdapterEnvelope`: The library silently updates the store with the data r
 
 ```ts
 const apiAdapter = new AsyncAdapter({
-  write: async (config, _changes, metadata, signal) => {
+  write: async (config, _lastCommittedConfig, metadata, signal) => {
     const res = await fetch('/api/settings', {
       /*...*/
     });
@@ -400,7 +405,7 @@ Note: A config store update triggered by the adapter's return value will not tri
 ### 3.4 Handle loading and error states in the UI
 
 ```tsx
-import {useUpdateConfig} from '@lolmaus/config-store';
+import {useUpdateConfig} from '@config-store/react';
 
 export const ThemeToggler = () => {
   const {update, isSaving} = useUpdateConfig();

@@ -18,7 +18,7 @@
   "scripts": {
     "lint": "eslint . --max-warnings 0",
     "check-types": "tsc -b",
-    "test": "tsx --test src/**/*.test.ts",
+    "test": "tsx --test **/*.test.ts",
     "build": "tsdown"
   },
   "peerDependencies": {
