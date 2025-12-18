@@ -3,38 +3,30 @@ import type {AdapterWriteResult, AdapterEnvelope, Meta} from '../types.js';
 
 export type ConcurrencyStrategy = 'abort' | 'optimistic' | 'queue';
 
-/**
- * Configuration options for the {@link AsyncAdapter}.
- */
 export interface AsyncAdapterOptions {
-  /**
-   * Retrieves settings and metadata.
-   */
   read: () => Promise<AdapterEnvelope>;
 
   /**
    * Persists settings.
-   *
-   * @returns A Promise resolving to an AdapterWriteResult (new settings/meta) or void.
    */
   write: (
-    config: unknown,
-    changes: unknown,
+    nextConfig: unknown,
+    lastCommittedConfig: unknown | undefined,
     metadata: Meta | undefined,
     signal?: AbortSignal
   ) => Promise<AdapterWriteResult | void>;
 
   onWriteError?: (error: unknown) => void;
-  debounceMs?: number;
   concurrency?: ConcurrencyStrategy;
 }
 
 export class AsyncAdapter extends BaseAdapter {
   protected options: AsyncAdapterOptions;
-  protected debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-  protected pendingResolve: ((value?: AdapterWriteResult) => void) | null = null;
+  // State Tracking
+  protected lastCommitted: unknown | undefined;
 
+  // Concurrency State
   protected abortController: AbortController | null = null;
   protected writeQueue: Promise<void> = Promise.resolve();
 
@@ -51,60 +43,74 @@ export class AsyncAdapter extends BaseAdapter {
     }
   }
 
-  read(): Promise<AdapterEnvelope> {
-    return this.options.read();
+  async read(): Promise<AdapterEnvelope> {
+    const envelope = await this.options.read();
+
+    // Initialize our anchor point from the server's truth
+    this.lastCommitted = envelope.config;
+
+    return envelope;
   }
 
-  write(
-    config: unknown,
-    changes: Partial<unknown>,
-    metadata: Meta
-  ): Promise<AdapterWriteResult | void> {
-    const {debounceMs = 500, concurrency = 'abort'} = this.options;
+  async write(nextConfig: unknown, metadata: Meta): Promise<AdapterWriteResult | void> {
+    const {concurrency = 'abort'} = this.options;
 
-    if (this.debounceTimer) clearTimeout(this.debounceTimer);
-    if (this.pendingResolve) {
-      this.pendingResolve();
-      this.pendingResolve = null;
+    try {
+      // Pass the 'nextConfig' to be saved, but ignore the optimistic prev.
+      // executeWrite will inject 'this.lastCommitted' instead.
+      return await this.executeWrite(nextConfig, metadata, concurrency);
+    } catch (err) {
+      // Swallow AbortErrors to prevent unhandled promise rejections in the UI
+      if (err instanceof Error && err.name === 'AbortError') return;
+
+      this.onWriteError(err);
+      throw err;
     }
-
-    return new Promise<AdapterWriteResult | void>((resolve, reject) => {
-      this.pendingResolve = resolve;
-
-      this.debounceTimer = setTimeout(() => {
-        this.executeWrite(config, changes, metadata, concurrency)
-          .then(resolve)
-          .catch((err: unknown) => {
-            if (err instanceof Error && err.name === 'AbortError') {
-              resolve();
-              return;
-            }
-            this.onWriteError(err);
-            reject(err);
-          });
-      }, debounceMs);
-    });
   }
 
   protected async executeWrite(
-    config: unknown,
-    changes: unknown,
+    nextConfig: unknown,
     metadata: Meta | undefined,
     strategy: ConcurrencyStrategy
   ): Promise<AdapterWriteResult | void> {
+    const runWrite = async (signal?: AbortSignal) => {
+      // 1. Pass 'this.lastCommitted' (Server Truth) to the user
+      const result = await this.options.write(nextConfig, this.lastCommitted, metadata, signal);
+
+      // 2. CRITICAL SAFETY CHECK
+      // If the request was aborted, the server likely didn't process it (or we can't be sure).
+      // We must NOT update 'lastCommitted', or we will assume the server has data it doesn't.
+      if (signal?.aborted) return;
+
+      // 3. Update anchor on success
+      if (result && result.config !== undefined) {
+        this.lastCommitted = result.config;
+      } else {
+        this.lastCommitted = nextConfig;
+      }
+
+      return result;
+    };
+
+    // Strategy: Abort (Default)
     if (strategy === 'abort') {
       if (this.abortController) this.abortController.abort();
       this.abortController = new AbortController();
-      return this.options.write(config, changes, metadata, this.abortController.signal);
+      return runWrite(this.abortController.signal);
     }
 
+    // Strategy: Queue
     if (strategy === 'queue') {
-      const queuedTask = this.writeQueue.then(() => this.options.write(config, changes, metadata));
+      // We wrap runWrite in a closure so it accesses 'this.lastCommitted'
+      // lazily, only when the queue actually executes this task.
+      const queuedTask = this.writeQueue.then(() => runWrite());
+
+      // Catch errors to ensure queue continues
       this.writeQueue = queuedTask.then(() => undefined).catch(() => undefined);
       return queuedTask;
     }
 
-    // Optimistic
-    return this.options.write(config, changes, metadata);
+    // Strategy: Optimistic (Parallel)
+    return runWrite();
   }
 }

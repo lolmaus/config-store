@@ -8,8 +8,8 @@ import {BaseAdapter} from './adapters/base.js';
 class MockAdapter extends BaseAdapter {
   state: AdapterEnvelope | undefined = undefined;
   read = mock.fn(async () => this.state);
-  write = mock.fn(async (config, changes, metadata) => {
-    this.state = {config, metadata};
+  write = mock.fn(async (nextConfig, metadata) => {
+    this.state = {config: nextConfig, metadata};
     return this.state;
   });
 }
@@ -208,56 +208,70 @@ describe('ConfigManager', () => {
 
       const config = manager.get();
 
-      assert.deepStrictEqual(config, {val: 20});
+      m = 'config should be migrated';
+      assert.deepStrictEqual(config, {val: 20}, m);
     });
 
-    it.skip('asserts that versions are defined in incremental order');
+    it('errors on non-incremental version numbers (v1 -> v3 -> v2)', async () => {
+      // Setup: Storage has V1
+      adapter.state = {
+        config: {val: 1},
+        metadata: {dataVersion: 1, schemaVersion: 1},
+      };
+
+      m = 'should throw, disallowing a lower version number';
+      assert.throws(
+        () => {
+          ConfigManager.create(adapter)
+            .addVersion({
+              version: 1,
+              schema: z.object({val: z.number()}),
+            })
+            .addVersion({
+              version: 3,
+              schema: z.object({val: z.number()}),
+              migration: (prev) => ({val: prev.val + 1}), // 1 -> 2
+            })
+            .addVersion({
+              version: 2,
+              schema: z.object({val: z.number()}),
+              migration: (prev) => ({val: prev.val * 10}), // 2 -> 20
+            });
+        },
+        /\[@config-manager\] Version numbers must be incremental, but after 3 received 2/,
+        m
+      );
+    });
   });
 
-  // describe('Updates (set)', () => {
-  //   it.skip('updates the state and persists via the adapter', async () => {
-  //     const manager = ConfigManager.create(adapter).addVersion({
-  //       version: 1,
-  //       schema: z.object({theme: z.string().default('light')}),
-  //     });
-
-  //     await manager.load();
-
-  //     // Act
-  //     await manager.set({theme: 'dark'});
-
-  //     // Assert State
-  //     assert.deepStrictEqual(manager.get(), {theme: 'dark'});
-
-  //     // Assert Side Effect
-  //     assert.strictEqual(adapter.write.mock.callCount(), 1);
-
-  //     const [config, changes, metadata] = adapter.write.mock.calls[0].arguments;
-  //     assert.deepStrictEqual(config, {theme: 'dark'});
-  //     assert.deepStrictEqual(changes, {theme: 'dark'});
-  //     assert.strictEqual(metadata.dataVersion, 1);
-  //   });
-
-  //   it.skip('resets a value to default if undefined is passed', async () => {
-  //     manager = new ConfigManager({adapter}).addVersion({
-  //       version: 1,
-  //       schema: z.object({
-  //         theme: z.string().default('light'),
-  //         volume: z.number().default(50),
-  //       }),
-  //     });
-
-  //     await manager.load();
-  //     await manager.set({volume: 100}); // Change it first
-
-  //     // Act: Reset to default
-  //     await manager.set({volume: undefined});
-
-  //     // Assert
-  //     assert.strictEqual(manager.get().volume, 50);
-
-  //     const [config] = adapter.write.mock.calls[1].arguments; // 2nd call
-  //     assert.strictEqual(config.volume, 50);
-  //   });
-  // });
+  describe('Updates (set)', () => {
+    // it.skip('updates the state and persists via the adapter', async () => {
+    //   const manager = ConfigManager.create(adapter).addVersion({
+    //     version: 1,
+    //     schema: z.object({theme: z.string().default('light')}),
+    //   });
+    //   await manager.load();
+    //   // Act
+    //   await manager.set({theme: 'dark'});
+    //   // Assert State
+    //   assert.deepStrictEqual(manager.get(), {theme: 'dark'});
+    // });
+    // it.skip('resets a value to default if undefined is passed', async () => {
+    //   manager = new ConfigManager({adapter}).addVersion({
+    //     version: 1,
+    //     schema: z.object({
+    //       theme: z.string().default('light'),
+    //       volume: z.number().default(50),
+    //     }),
+    //   });
+    //   await manager.load();
+    //   await manager.set({volume: 100}); // Change it first
+    //   // Act: Reset to default
+    //   await manager.set({volume: undefined});
+    //   // Assert
+    //   assert.strictEqual(manager.get().volume, 50);
+    //   const [config] = adapter.write.mock.calls[1].arguments; // 2nd call
+    //   assert.strictEqual(config.volume, 50);
+    // });
+  });
 });

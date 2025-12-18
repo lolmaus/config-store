@@ -30,11 +30,11 @@ export class LocalStorageAdapter extends BaseAdapter {
     }
   }
 
-  write(config: unknown, _changes: unknown, metadata: Meta): AdapterWriteResult | void {
+  write(nextConfig: unknown, metadata: Meta): AdapterWriteResult | void {
     if (typeof localStorage === 'undefined') return;
 
     const payload: AdapterEnvelope = {
-      config,
+      config: nextConfig,
       metadata,
     };
 
@@ -45,6 +45,6 @@ export class LocalStorageAdapter extends BaseAdapter {
       return;
     }
 
-    return {config, metadata};
+    return {config: nextConfig, metadata};
   }
 }

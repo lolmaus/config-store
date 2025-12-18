@@ -55,6 +55,12 @@ export class ConfigManager<TCurrent = undefined> {
       ? {migration?: never} // First version: No migration allowed
       : {migration: (prev: TCurrent) => TNext}) // Update: Migration required
   ): ConfigManager<TNext> {
+    if (args.version <= this.metadata.schemaVersion) {
+      throw new Error(
+        `[@config-manager] Version numbers must be incremental, but after ${this.metadata.schemaVersion} received ${args.version}`
+      );
+    }
+
     // 1. Create the new definition object
     const newVersion: VersionDef<TCurrent, TNext> = {
       version: args.version,
@@ -67,6 +73,10 @@ export class ConfigManager<TCurrent = undefined> {
     return new ConfigManager<TNext>(this.adapter, [...this.versions, newVersion], args.schema);
   }
 
+  get(): TCurrent {
+    return this.store.getState();
+  }
+
   async load(): Promise<void> {
     const incomingEnvelope: AdapterEnvelope | void = await this.adapter.read();
     const migratedEnvelope: AdapterEnvelope = this.migrate(incomingEnvelope);
@@ -75,9 +85,16 @@ export class ConfigManager<TCurrent = undefined> {
     this.store.setState(migratedEnvelope.config as TCurrent);
   }
 
-  get(): TCurrent {
-    return this.store.getState();
-  }
+  // async save(config: TCurrent): Promise<TCurrent> {
+  //   this.store.setState(config);
+
+  //   this.metadata.dataVersion++;
+
+  //   try {
+  //     await this.adapter.write()
+  //   }
+
+  // }
 
   // ------------------------
   // Private methods
