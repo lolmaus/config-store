@@ -1,7 +1,8 @@
 {
   "extends": "@config-store/typescript-config/node-test.json",
   "compilerOptions": {
-    "composite": true,
+    "composite": false,
+    "noEmit": true,
     "incremental": true,
     "tsBuildInfoFile": "./dist/tsconfig.test.tsbuildinfo",
     "jsx": "react-jsx",
@@ -10,6 +11,5 @@
       "@config-store/core": ["../core/src/index.ts"]
     }
   },
-  "include": ["src/**/*.test.ts", "src/*.test.ts", "src/**/*.test.tsx", "src/*.test.tsx"],
-  "references": [{"path": "./tsconfig.lib.json"}]
+  "include": ["src/**/*.test.ts", "src/*.test.ts", "src/**/*.test.tsx", "src/*.test.tsx"]
 }

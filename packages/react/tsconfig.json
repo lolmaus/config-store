@@ -1,7 +1,12 @@
 {
-  "files": [],
-  "references": [
-    { "path": "./tsconfig.lib.json" },
-    { "path": "./tsconfig.test.json" }
-  ]
+  "extends": "@config-store/typescript-config/react-library.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": {
+      "@config-store/core": ["../core/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*"]
 }

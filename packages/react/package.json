@@ -17,7 +17,7 @@
   ],
   "scripts": {
     "lint": "eslint . --max-warnings 0",
-    "check-types": "tsc -b",
+    "check-types": "tsc -p tsconfig.build.json && tsc -p tsconfig.test.json",
     "build": "tsdown",
     "build:watch": "tsdown --watch",
     "test": "tsx --tsconfig tsconfig.test.json --test **/*.test.ts **/*.test.tsx",
