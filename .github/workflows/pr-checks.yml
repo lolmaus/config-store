@@ -5,6 +5,7 @@ on:
     branches: ['gen0']
   push:
     branches: ['gen0']
+  workflow_dispatch:
 
 jobs:
   quality:
