@@ -156,7 +156,8 @@ If using previous versions of packages, mind version compatibility table:
 
 | Branch           | @config-store/core | @config-store/react |
 | ---------------- | ------------------ | ------------------- |
-| `gen0` (current) | > 0.0.0            | > 0.0.0             |
+| —                | >= 0.0.0           | —                   |
+| `gen0` (current) | >= 0.3.0           | >= 0.1.0            |
 
 ⠀
 
