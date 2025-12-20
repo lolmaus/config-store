@@ -96,8 +96,13 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
 
     pending.reject(new Error('Network Down'));
 
-    // Await Manager (swallows error, handles revert)
-    await savePromise;
+    m = 'Should reject the promise';
+    await assert.rejects(
+      savePromise,
+      (err: unknown) =>
+        err && typeof err === 'object' && 'message' in err && err.message === 'Network Down',
+      m
+    );
 
     // Verify Rollback
     m = 'Should revert to "light" after write failure';

@@ -1,7 +1,8 @@
 {
-  "files": [],
-  "references": [
-    { "path": "./tsconfig.lib.json" },
-    { "path": "./tsconfig.test.json" }
-  ]
+  "extends": "@config-store/typescript-config/base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node"] // Needed so VS Code doesn't error on 'describe'/'it'
+  },
+  "include": ["src/**/*"]
 }

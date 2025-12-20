@@ -12,7 +12,7 @@ export class ConfigManager<TCurrent = undefined> {
   protected adapter: BaseAdapter;
   protected versions: VersionDef<any, any>[]; // eslint-disable-line @typescript-eslint/no-explicit-any
   protected schema?: z.ZodType<TCurrent>;
-  protected store: StoreApi<TCurrent>;
+  public store: StoreApi<TCurrent>;
   public metadata: Meta;
 
   // ------------------------
@@ -145,18 +145,12 @@ export class ConfigManager<TCurrent = undefined> {
         return migratedEnvelope.config as TCurrent;
       }
 
-      // Cannot recorver from outdated schema
-      if (error instanceof ConfigSchemaOutdatedError) {
-        throw error;
-      }
-
       // Handle Generic Error (Network, etc)
       // Rollback: Revert to the state before this request started
       this.metadata = previousMetadata;
       this.store.setState(previousConfig);
 
-      // Return the restored config (swallowing the error)
-      return previousConfig;
+      throw error;
     }
   }
 

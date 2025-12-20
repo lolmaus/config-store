@@ -3,9 +3,12 @@
   "private": true,
   "scripts": {
     "build": "turbo run build",
+    "build:watch": "turbo run build:watch",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
+    "all": "turbo run lint check-types test build",
     "test": "turbo run test",
+    "test:watch": "turbo run test:watch",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
@@ -19,7 +22,7 @@
     "turbo": "^2.6.3",
     "typescript": "5.9.2"
   },
-  "packageManager": "pnpm@10.26.0",
+  "packageManager": "pnpm@10.26.1",
   "engines": {
     "node": ">=20"
   }

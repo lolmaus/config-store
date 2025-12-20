@@ -7,4 +7,5 @@ export default defineConfig({
   clean: true, // Delete dist/ before building
   dts: true, // Generate type definitions (.d.ts)
   tsconfig: './tsconfig.build.json',
+  external: ['@config-store/core'], // explicit external prevents bundling due to path aliases
 });

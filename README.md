@@ -21,11 +21,16 @@ A strict, schema-first config manager designed for long-lived frontend apps. It 
 - [@config-store](#config-store)
   - [0. Roadmap](#0-roadmap)
   - [1. Installation](#1-installation)
+  - [1.1. General installation](#11-general-installation)
+  - [1.2. Use with React](#12-use-with-react)
+  - [1.3 Use with other frameworks](#13-use-with-other-frameworks)
+  - [1.3. Version compatibility](#13-version-compatibility)
   - [2. Quickstart](#2-quickstart)
     - [2.1. Define the manager](#21-define-the-manager)
-    - [2.2. Wrap your app with the config provider](#22-wrap-your-app-with-the-config-provider)
-    - [2.3. Read config](#23-read-config)
-    - [2.4. Persist config updates](#24-persist-config-updates)
+    - [2.2. Generate typed hooks](#22-generate-typed-hooks)
+    - [2.3. Wrap your app with the config provider](#23-wrap-your-app-with-the-config-provider)
+    - [2.4. Read config](#24-read-config)
+    - [2.5. Persist config updates](#25-persist-config-updates)
   - [3. Defining a custom adapter](#3-defining-a-custom-adapter)
     - [3.1 The AsyncAdapter Helper](#31-the-asyncadapter-helper)
     - [3.2 Handling Concurrency (Race Conditions)](#32-handling-concurrency-race-conditions)
@@ -63,8 +68,11 @@ A strict, schema-first config manager designed for long-lived frontend apps. It 
   - [x] CI setup
     - [x] ~~Check PR title for conventional commits~~
     - [x] Run PR checks
-    - [x] Release npm packages with Changesets
+    - [x] Release npm packages
   - [ ] lefthook for pre-commit checks
+  - [ ] Use Changesets
+    - [x] Configure
+    - [ ] Switch to per-package changelogs
 - [ ] Packages
   - [x] Core
     - [x] Adapters
@@ -113,9 +121,11 @@ A strict, schema-first config manager designed for long-lived frontend apps. It 
 
 ## 1. Installation
 
-1.1. Make sure you have [Zod 4](https://zod.dev) installed.
+## 1.1. General installation
 
-1.2. Install the `@config-store/core` package using your preferred npm-based package manager:
+1.1.1. Make sure you have [Zod 4](https://zod.dev) installed.
+
+1.1.2. Install the `@config-store/core` package using your preferred npm-based package manager:
 
 ```sh
 npm i -S @config-store/core
@@ -124,17 +134,30 @@ yarn add @config-store/core
 bun add @config-store/core
 ```
 
-1.3. Optionally, install a framework-specific package. The following packages are available:
+⠀
 
-- `@config-store/react` (WIP)
+## 1.2. Use with React
+
+Additionally, install `@config-store/react`.
+
+⠀
+
+## 1.3 Use with other frameworks
 
 Support for other frameworks is not planned, but contributions are very welcome.
 
-If using previous versions, mind version compatibility table:
+Meanwhile, you can integrate the `ConfigManger` by hand.
+
+⠀
+
+## 1.3. Version compatibility
+
+If using previous versions of packages, mind version compatibility table:
 
 | Branch           | @config-store/core | @config-store/react |
 | ---------------- | ------------------ | ------------------- |
-| `gen0` (current) | > 0.0.0            | > 0.0.0             |
+| —                | >= 0.0.0           | —                   |
+| `gen0` (current) | >= 0.3.0           | >= 0.1.0            |
 
 ⠀
 
@@ -198,7 +221,20 @@ export type Config = InferConfig<typeof ConfigManager>;
 
 ⠀
 
-### 2.2. Wrap your app with the config provider
+### 2.2. Generate typed hooks
+
+In e. g. `src/settings/hooks.ts`, make versions of hooks `useConfig` and `useUpdateConfig` that are typed with your current config shape:
+
+```ts
+import {createHooks} from '@config-store/react';
+import type {Config} from './manager';
+
+export const {useConfig, useUpdateConfig} = createHooks<Config>();
+```
+
+⠀
+
+### 2.3. Wrap your app with the config provider
 
 Pass your `ConfigManager` instance into the `manager` prop of the provider.
 
@@ -215,12 +251,12 @@ export const App = () => (
 
 ⠀
 
-### 2.3. Read config
+### 2.4. Read config
 
 Use the hook `useConfig` to read config:
 
 ```tsx
-import {useConfig} from '@config-store/react';
+import {useConfig} from 'my-app/settings/hooks';
 
 export const PageWrapper = ({children}) => {
   // Get the entire settings object
@@ -235,12 +271,12 @@ export const PageWrapper = ({children}) => {
 
 ⠀
 
-### 2.4. Persist config updates
+### 2.5. Persist config updates
 
 Use the `useUpdateConfig` hook to update user settings and persist them:
 
 ```tsx
-import {useUpdateConfig} from '@config-store/react';
+import {useUpdateConfig} from 'my-app/settings/hooks';
 
 export const ThemeToggler = () => {
   const {update} = useUpdateConfig();

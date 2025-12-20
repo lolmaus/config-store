@@ -1,0 +1,15 @@
+{
+  "extends": "@config-store/typescript-config/node-test.json",
+  "compilerOptions": {
+    "composite": false,
+    "noEmit": true,
+    "incremental": true,
+    "tsBuildInfoFile": "./dist/tsconfig.test.tsbuildinfo",
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "@config-store/core": ["../core/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*"]
+}
