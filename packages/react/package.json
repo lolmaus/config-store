@@ -1,20 +1,15 @@
 {
-  "name": "@config-store/core",
-  "version": "0.2.0",
+  "name": "@config-store/react",
+  "version": "0.0.0",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": {
-        "types": "./dist/index.d.mts",
-        "default": "./dist/index.mjs"
-      },
-      "require": {
-        "types": "./dist/index.d.cts",
-        "default": "./dist/index.cjs"
-      }
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
     }
   },
   "files": [
@@ -25,18 +20,25 @@
     "check-types": "tsc -b",
     "build": "tsdown",
     "build:watch": "tsdown --watch",
-    "test": "tsx --tsconfig tsconfig.test.json --test **/*.test.ts",
-    "test:watch": "tsx --tsconfig tsconfig.test.json --test --watch \"**/*.test.ts\""
+    "test": "tsx --tsconfig tsconfig.test.json --test **/*.test.ts **/*.test.tsx",
+    "test:watch": "tsx --tsconfig tsconfig.test.json --test --watch \"**/*.test.ts\" \"**/*.test.tsx\""
   },
   "peerDependencies": {
-    "zod": "^4.0.0"
+    "@config-store/core": "workspace:*",
+    "react": ">=18"
   },
   "devDependencies": {
+    "@config-store/core": "workspace:*",
     "@config-store/eslint-config": "workspace:*",
     "@config-store/typescript-config": "workspace:*",
+    "@happy-dom/global-registrator": "^20.0.11",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.1",
     "@types/node": "^22.15.3",
+    "@types/react": "19.2.2",
     "eslint": "^9.39.1",
     "happy-dom": "^20.0.11",
+    "react": "^19.2.0",
     "tsdown": "^0.18.0",
     "tsx": "^4.21.0",
     "typescript": "5.9.2",

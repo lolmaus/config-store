@@ -15,11 +15,15 @@
       "outputs": ["dist/**/*.tsbuildinfo"]
     },
     "test": {
-      "dependsOn": ["^build"],
+      "dependsOn": [],
       "outputs": [],
       "inputs": ["src/**/*.tsx", "src/**/*.ts", "test/**/*.ts"]
     },
-    "dev": {
+    "build:watch": {
+      "cache": false,
+      "persistent": true
+    },
+    "test:watch": {
       "cache": false,
       "persistent": true
     }
