@@ -1,0 +1,15 @@
+{
+  "mode": "pre",
+  "tag": "alpha",
+  "initialVersions": {
+    "docs": "0.1.0",
+    "web": "0.1.0",
+    "@config-store/core": "0.2.0",
+    "@config-store/eslint-config": "0.0.0",
+    "@config-store/react": "0.1.0",
+    "@config-store/typescript-config": "0.0.0"
+  },
+  "changesets": [
+    "dirty-deserts-talk"
+  ]
+}
