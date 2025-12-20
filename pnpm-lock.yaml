@@ -23,9 +23,6 @@ importers:
 
   apps/docs:
     dependencies:
-      '@config-store/ui':
-        specifier: workspace:*
-        version: link:../../packages/ui
       next:
         specifier: 16.0.10
         version: 16.0.10(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -60,9 +57,6 @@ importers:
 
   apps/web:
     dependencies:
-      '@config-store/ui':
-        specifier: workspace:*
-        version: link:../../packages/ui
       next:
         specifier: 16.0.10
         version: 16.0.10(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -218,37 +212,6 @@ importers:
         version: 4.2.1
 
   packages/typescript-config: {}
-
-  packages/ui:
-    dependencies:
-      react:
-        specifier: ^19.2.0
-        version: 19.2.0
-      react-dom:
-        specifier: ^19.2.0
-        version: 19.2.0(react@19.2.0)
-    devDependencies:
-      '@config-store/eslint-config':
-        specifier: workspace:*
-        version: link:../eslint-config
-      '@config-store/typescript-config':
-        specifier: workspace:*
-        version: link:../typescript-config
-      '@types/node':
-        specifier: ^22.15.3
-        version: 22.15.3
-      '@types/react':
-        specifier: 19.2.2
-        version: 19.2.2
-      '@types/react-dom':
-        specifier: 19.2.2
-        version: 19.2.2(@types/react@19.2.2)
-      eslint:
-        specifier: ^9.39.1
-        version: 9.39.1
-      typescript:
-        specifier: 5.9.2
-        version: 5.9.2
 
 packages:
 
