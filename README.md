@@ -24,7 +24,7 @@ A strict, schema-first config manager designed for long-lived frontend apps. It 
   - [1.1. General installation](#11-general-installation)
   - [1.2. Use with React](#12-use-with-react)
   - [1.3 Use with other frameworks](#13-use-with-other-frameworks)
-  - [1.3. Version compatibility](#13-version-compatibility)
+  - [1.4. Version compatibility](#14-version-compatibility)
   - [2. Quickstart](#2-quickstart)
     - [2.1. Define the manager](#21-define-the-manager)
     - [2.2. Generate typed hooks](#22-generate-typed-hooks)
@@ -150,7 +150,7 @@ Meanwhile, you can integrate the `ConfigManger` by hand.
 
 ⠀
 
-## 1.3. Version compatibility
+## 1.4. Version compatibility
 
 If using previous versions of packages, mind version compatibility table:
 
@@ -182,7 +182,7 @@ import {z} from 'zod';
 const adapter = new LocalStorageAdapter({key: 'my-app-settings'});
 
 // 2.1.2. Initialize the manager with the adapter
-export const ConfigManager = ConfigManager.create(adapter)
+export const configManager = ConfigManager.create(adapter)
   // Define Version 1
   .addVersion({
     version: 1,
@@ -235,14 +235,14 @@ export const {useConfig, useUpdateConfig} = createHooks<Config>();
 
 ### 2.3. Wrap your app with the config provider
 
-Pass your `ConfigManager` instance into the `manager` prop of the provider.
+Pass your `configManager` instance into the `manager` prop of the provider.
 
 ```tsx
 import {ConfigProvider} from '@config-store/core';
-import {ConfigManager} from './settings/manager';
+import {configManager} from './settings/manager';
 
 export const App = () => (
-  <ConfigProvider value={ConfigManager}>
+  <ConfigProvider value={configManager}>
     <Dashboard />
   </ConfigProvider>
 );
@@ -315,7 +315,7 @@ interface MyMeta {
   dataVersion: number;
 }
 
-export const apiAdapter = new AsyncAdapter<MySettings, MyMeta>({
+export const apiAdapter = new AsyncAdapter({
   // Choose how to handle concurrent save requests
   concurrency: 'abort',
 
