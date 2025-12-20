@@ -25,8 +25,8 @@
     "check-types": "tsc -p tsconfig.build.json && tsc -p tsconfig.test.json",
     "build": "tsdown",
     "build:watch": "tsdown --watch",
-    "test": "tsx --tsconfig tsconfig.test.json --test **/*.test.ts",
-    "test:watch": "tsx --tsconfig tsconfig.test.json --test --watch \"**/*.test.ts\""
+    "test": "tsx --tsconfig tsconfig.test.json --test src/**/*.test.ts",
+    "test:watch": "tsx --tsconfig tsconfig.test.json --test --watch \"src/**/*.test.ts\""
   },
   "peerDependencies": {
     "zod": "^4.0.0"
