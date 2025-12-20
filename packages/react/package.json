@@ -20,9 +20,9 @@
     "check-types": "tsc -p tsconfig.build.json && tsc -p tsconfig.test.json",
     "build": "tsdown",
     "build:watch": "tsdown --watch",
-    "#comment": "We need quotes below because curly braces expansion is not available on GitHub CI, but tsdown hand handle it",
-    "test": "tsx --tsconfig tsconfig.test.json --test \"src/**/*.test.{ts,tsx}\"",
-    "test:watch": "tsx --tsconfig tsconfig.test.json --test --watch \"src/**/*.test.{ts,tsx}\""
+    "#comment": "We need `find` below because curly braces expansion is not available on GitHub CI",
+    "test": "tsx --tsconfig tsconfig.test.json --test $(find src -name '*.test.ts' -o -name '*.test.tsx')",
+    "test:watch": "tsx --tsconfig tsconfig.test.json --test --watch $(find src -name '*.test.ts' -o -name '*.test.tsx')"
   },
   "peerDependencies": {
     "@config-store/core": "workspace:*",
