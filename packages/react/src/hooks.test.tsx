@@ -114,7 +114,7 @@ describe('React Hooks', () => {
     });
 
     m = 'Manager state should match the updated value "dark"';
-    assert.strictEqual(manager.get().theme, 'dark', m);
+    assert.strictEqual(manager.config.theme, 'dark', m);
   });
 
   it('useUpdateConfig() merges partial objects', async () => {
@@ -149,7 +149,7 @@ describe('React Hooks', () => {
       btn.click();
     });
 
-    const state = complexManager.get();
+    const state = complexManager.config;
 
     m = 'Theme should be updated to "dark"';
     assert.strictEqual(state.theme, 'dark', m);
@@ -289,7 +289,7 @@ describe('React Hooks', () => {
       });
 
       m = 'Generated update hook should update the store';
-      assert.strictEqual(manager.get().theme, 'dark', m);
+      assert.strictEqual(manager.config.theme, 'dark', m);
     });
   });
 });

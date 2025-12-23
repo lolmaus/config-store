@@ -18,8 +18,8 @@ export class ConfigManager<TCurrent = undefined> {
   protected adapter: BaseAdapter;
   protected versions: VersionDef<any, any>[]; // eslint-disable-line @typescript-eslint/no-explicit-any
   protected schema: z.ZodType<TCurrent> | undefined;
-  protected configStore: StoreApi<TCurrent> | undefined;
-  protected stateStore: StoreApi<ManagerState> | undefined;
+  public configStore: StoreApi<TCurrent> | undefined;
+  public stateStore: StoreApi<ManagerState> | undefined;
 
   // ------------------------
   // Constructor

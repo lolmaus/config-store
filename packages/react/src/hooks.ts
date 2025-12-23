@@ -22,9 +22,15 @@ export function useConfig<T, TSlice = T>(selector?: (state: T) => TSlice): TSlic
     throw new Error('[@config-store/react] useConfig must be used within a <ConfigProvider>');
   }
 
+  if (!manager.configStore) {
+    throw new Error(
+      '[@config-store/react] The ConfigManager must have a version defined before using useConfig'
+    );
+  }
+
   // We cast the store to the generic T provided by the user.
   // This is safe because the user ensures the Manager<T> passed to Provider matches T here.
-  return useStore(manager.store, selector as (state: unknown) => TSlice) as TSlice;
+  return useStore(manager.configStore, selector as (state: unknown) => TSlice) as TSlice;
 }
 
 export interface UseUpdateConfigResult<T> {
@@ -56,7 +62,7 @@ export function useUpdateConfig<T>(): UseUpdateConfigResult<T> {
       setError(null);
 
       try {
-        const current = manager.get() as T;
+        const current = manager.config as T;
 
         let nextConfig: T;
 
