@@ -171,7 +171,7 @@ Chain `.addVersion()` to define your schema history.
 ⚠️ Important: the Zod schema is used as the source of truth for config defaults. It should be able to handle `undefined` as input and produce a valid default config. For this to be possible:
 
 - You must provide [.default()](https://zod.dev/api?id=defaults) values for every property in your schema.
-- You must attach [.prefault({})](https://zod.dev/api?id=prefaults) to the root `z.object()`.
+- You must attach [.optional()](https://zod.dev/api?id=optionals), [.nullable()](https://zod.dev/api?id=optionals), [.nullish()](https://zod.dev/api?id=optionals) or [.prefault({})](https://zod.dev/api?id=prefaults) (recommended) to the root `z.object()`.
 
 ```ts
 import {ConfigManager, LocalStorageAdapter, type InferConfig} from '@config-store/core';

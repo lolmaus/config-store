@@ -193,7 +193,7 @@ describe('ConfigManager', () => {
         (e) =>
           e instanceof Error &&
           e.message ===
-            '[@config-store] Failed to revert to defaults. Schema must be defined with `.prefault()` on the outer object and `.default()` on every property.',
+            '[@config-store] Failed to revert to defaults. Schema must be defined with `.optional()`, `.nullable()`, `.nullish()` or `.prefault({})` on the outer object and `.default()` on every property.',
         m
       );
     });

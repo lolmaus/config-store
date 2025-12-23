@@ -252,7 +252,7 @@ export class ConfigManager<TCurrent = undefined> {
 
       if (zodResult2.error) {
         throw new Error(
-          '[@config-store] Failed to revert to defaults. Schema must be defined with `.prefault()` on the outer object and `.default()` on every property.'
+          '[@config-store] Failed to revert to defaults. Schema must be defined with `.optional()`, `.nullable()`, `.nullish()` or `.prefault({})` on the outer object and `.default()` on every property.'
         );
       }
 
@@ -265,7 +265,7 @@ export class ConfigManager<TCurrent = undefined> {
   protected migrate(initialEnvelope: AdapterEnvelope | void): AdapterEnvelope {
     if (!this.schema) {
       throw new Error(
-        '[@config-store] Failed to revert to defaults. Schema must be defined with `.prefault()` on the outer object and `.default()` on every property.'
+        '[@config-store] Failed to revert to defaults. Schema must be defined with `.optional()`, `.nullable()`, `.nullish()` or `.prefault({})` on the outer object and `.default()` on every property.'
       );
     }
 
@@ -342,7 +342,7 @@ export class ConfigManager<TCurrent = undefined> {
   protected getDefaultEnvelope(): AdapterEnvelope {
     if (!this.schema) {
       throw new Error(
-        '[@config-store] Failed to revert to defaults. Schema must be defined with `.prefault()` on the outer object and `.default()` on every property.'
+        '[@config-store] Failed to revert to defaults. Schema must be defined with `.optional()`, `.nullable()`, `.nullish()` or `.prefault({})` on the outer object and `.default()` on every property.'
       );
     }
 
