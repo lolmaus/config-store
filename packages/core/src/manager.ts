@@ -206,6 +206,7 @@ export class ConfigManager<TCurrent = undefined> {
       if (error instanceof ConfigConflictError) {
         // Heal: We accept the server's data
         const migratedEnvelope = this.migrate(error.serverEnvelope);
+        this.setStatusSuccess();
         this.setMetadata(migratedEnvelope.metadata);
         this.configStore.setState(migratedEnvelope.config as TCurrent);
         return migratedEnvelope.config as TCurrent;

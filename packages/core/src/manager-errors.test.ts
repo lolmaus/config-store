@@ -313,6 +313,54 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
       assert.strictEqual(manager.dataVersion, 5, m);
     });
 
+    it('Status Correction: Conflict Resolution should mark manager as Success/Hydrated if it was previously in Error', async () => {
+      // 1. Setup: Create a FRESH manager to bypass the 'beforeEach' hydration
+      const localAdapter = new ControlledMockAdapter();
+      const localManager = ConfigManager.create(localAdapter).addVersion({
+        version: 1,
+        schema: themeSchema,
+      });
+
+      // Force manager into 'error' state (Simulate Offline on App Boot)
+      const loadPromise = localManager.load();
+      localAdapter.pendingRead?.reject(new Error('Offline'));
+      await loadPromise;
+
+      m = 'Manager should be in error state initially';
+      assert.strictEqual(localManager.state.status, 'error', m);
+      // This will now PASS because we bypassed the beforeEach
+      assert.strictEqual(localManager.state.hasBeenHydrated, false, m);
+
+      // 2. Action: Attempt to Save
+      const savePromise = localManager.save({theme: 'dark'});
+
+      // 3. Simulate: Server is reachable but returns Conflict
+      // (e.g. we came online but were out of date)
+      const conflictPayload: AdapterEnvelope = {
+        config: {theme: 'blue'},
+        metadata: {dataVersion: 10, schemaVersion: 1},
+      };
+
+      const pendingWrite = localAdapter.pendingWrites.shift();
+      assert.ok(pendingWrite, 'Write should be pending');
+
+      // Reject with Conflict
+      pendingWrite.reject(new ConfigConflictError(conflictPayload));
+
+      // 4. Await resolution (Healing)
+      await savePromise;
+
+      // 5. Assertions
+      m = 'Config should be healed to server value';
+      assert.strictEqual(localManager.config.theme, 'blue', m);
+
+      m = 'Status should be updated to success after successful healing';
+      assert.strictEqual(localManager.state.status, 'success', m);
+
+      m = 'Manager should be hydrated after processing conflict payload';
+      assert.strictEqual(localManager.state.hasBeenHydrated, true, m);
+    });
+
     it('Conflict Error on STALE request. Ignored.', async () => {
       console.log('ZOMG ------------ test start ----------');
       m = 'initial manager.config.theme';
