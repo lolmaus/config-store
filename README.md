@@ -9,12 +9,12 @@ A strict, schema-first config manager designed for long-lived frontend apps. It 
 - **Fail-Safe:** Malformed configs that cannot be migrated are swapped with schema defaults and overwrite the invalid data on the next save.
 - **Flexible Adapters:** Ships with a `LocalStorageAdapter` and a robust `AsyncAdapter` (for REST APIs). You can easily define custom adapters for other protocols (e.g., WebSocket, IndexedDB).
 - **Concurrency Control:** The `AsyncAdapter` provides three strategies for parallel writes:
-  - `abort`: Cancels previous pending requests (default, relies on AbortController).
-  - `optimistic`: Sends all requests but handles `409 Conflict` via versioning (requires backend logic).
-  - `queue`: Sequential execution (for legacy backends).
+    - `abort`: Cancels previous pending requests (default, relies on AbortController).
+    - `optimistic`: Sends all requests but handles `409 Conflict` via versioning (requires backend logic).
+    - `queue`: Sequential execution (for legacy backends).
 - **Framework-agnostic:** The core can be used with vanilla JS or in any framework.
 - **Framework integrations:** Offers the following integrations:
-  - **React**: Includes a `useConfig` hook with **selector support** (e.g., `s => s.theme`). This allows a component to rerender only when the relevant individual setting changes. Other changes to the config will not cause rerenders.
+    - **React**: Includes a `useConfig` hook with **selector support** (e.g., `s => s.theme`). This allows a component to rerender only when the relevant individual setting changes. Other changes to the config will not cause rerenders.
 
 ⠀
 
@@ -56,66 +56,66 @@ A strict, schema-first config manager designed for long-lived frontend apps. It 
 ## 0. Roadmap
 
 - [ ] Infrastructure
-  - [x] Monorepo
-  - [x] Tasks
-    - [x] Format
-    - [x] Lint
-    - [x] Check types
-    - [x] Build (with `tsdown`)
-    - [x] Unit-test (with `tsx` and `node:test`)
-  - [x] Turborepo configuration
-  - [ ] Turborepo remote caching
-  - [x] CI setup
-    - [x] ~~Check PR title for conventional commits~~
-    - [x] Run PR checks
-    - [x] Release npm packages
-  - [ ] lefthook for pre-commit checks
-  - [ ] Use Changesets
-    - [x] Configure
-    - [ ] Switch to per-package changelogs
+    - [x] Monorepo
+    - [x] Tasks
+        - [x] Format
+        - [x] Lint
+        - [x] Check types
+        - [x] Build (with `tsdown`)
+        - [x] Unit-test (with `tsx` and `node:test`)
+    - [x] Turborepo configuration
+    - [ ] Turborepo remote caching
+    - [x] CI setup
+        - [x] ~~Check PR title for conventional commits~~
+        - [x] Run PR checks
+        - [x] Release npm packages
+    - [ ] lefthook for pre-commit checks
+    - [ ] Use Changesets
+        - [x] Configure
+        - [ ] Switch to per-package changelogs
 - [ ] Packages
-  - [x] Core
-    - [x] Adapters
-      - [x] Base
-      - [x] Local Storage
-      - [x] Async
-        - [x] ~~Debouncing~~
-        - [x] AbortSignal
-        - [x] Concurrency
-          - [x] Default (relies on AbortSignal)
-          - [x] dataVersion
-          - [x] sequential
-    - [x] Config Manger
-      - [x] Schema definition via Zod
-      - [x] `addVersion` / Schema History API
-      - [x] Migration runner logic
-      - [x] Default value fallback
-      - [x] Metadata/Version state management
-      - [x] Type inference helper (`InferConfig<T>`)
-      - [x] Zustand store
-      - [x] Retrieving config from the manager
-      - [x] Updating config
-      - [x] Error handling
-        - [x] Concurrent requests from burst-clicking
-        - [x] Concurrent requests from different tabs/devices
-        - [x] Saved schema is higher than current latest schema
-    - [x] Barrel file `index.ts`
-  - [ ] React
-  - [ ] Docs app
+    - [x] Core
+        - [x] Adapters
+            - [x] Base
+            - [x] Local Storage
+            - [x] Async
+                - [x] ~~Debouncing~~
+                - [x] AbortSignal
+                - [x] Concurrency
+                    - [x] Default (relies on AbortSignal)
+                    - [x] dataVersion
+                    - [x] sequential
+        - [x] Config Manger
+            - [x] Schema definition via Zod
+            - [x] `addVersion` / Schema History API
+            - [x] Migration runner logic
+            - [x] Default value fallback
+            - [x] Metadata/Version state management
+            - [x] Type inference helper (`InferConfig<T>`)
+            - [x] Zustand store
+            - [x] Retrieving config from the manager
+            - [x] Updating config
+            - [x] Error handling
+                - [x] Concurrent requests from burst-clicking
+                - [x] Concurrent requests from different tabs/devices
+                - [x] Saved schema is higher than current latest schema
+        - [x] Barrel file `index.ts`
+    - [ ] React
+    - [ ] Docs app
 - [ ] Testing
-  - [x] Unit tests
+    - [x] Unit tests
 - [ ] Documentation
-  - [x] Readme
-    - [x] Intro, rationalization
-    - [x] Roadmap
-    - [x] Usage samples
-    - [x] Adapter usage
-    - [x] FAQ
-    - [x] Development
-  - [ ] Docs app
-  - [ ] API documentation
-    - [ ] Document with inline comments
-    - [ ] Build documentation with TypeDoc
+    - [x] Readme
+        - [x] Intro, rationalization
+        - [x] Roadmap
+        - [x] Usage samples
+        - [x] Adapter usage
+        - [x] FAQ
+        - [x] Development
+    - [ ] Docs app
+    - [ ] API documentation
+        - [ ] Document with inline comments
+        - [ ] Build documentation with TypeDoc
 
 ⠀
 
@@ -183,39 +183,39 @@ const adapter = new LocalStorageAdapter({key: 'my-app-settings'});
 
 // 2.1.2. Initialize the manager with the adapter
 export const configManager = ConfigManager.create(adapter)
-  // Define Version 1
-  .addVersion({
-    version: 1,
-    schema: z
-      .object({
-        menuExpanded: z.boolean().default(true),
-        darkTheme: z.boolean().default(false),
-      })
-      .prefault({}),
-  })
+    // Define Version 1
+    .addVersion({
+        version: 1,
+        schema: z
+            .object({
+                menuExpanded: z.boolean().default(true),
+                darkTheme: z.boolean().default(false),
+            })
+            .prefault({}),
+    })
 
-  // Define Version 2
-  .addVersion({
-    version: 2,
-    schema: z
-      .object({
-        menuExpanded: z.boolean().default(true),
-        // Changed from boolean 'darkTheme' to 'theme' typed as 'light' | 'dark' | 'high-contrast'
-        theme: z.literal(['light', 'dark', 'high-contrast']).default('light'),
-      })
-      .prefault({}),
+    // Define Version 2
+    .addVersion({
+        version: 2,
+        schema: z
+            .object({
+                menuExpanded: z.boolean().default(true),
+                // Changed from boolean 'darkTheme' to 'theme' typed as 'light' | 'dark' | 'high-contrast'
+                theme: z.literal(['light', 'dark', 'high-contrast']).default('light'),
+            })
+            .prefault({}),
 
-    migration: (prev) => {
-      // TypeScript automatically infers 'prev' as the previous version 💎
-      return {
-        menuExpanded: prev.menuExpanded,
-        theme: prev.darkTheme ? 'dark' : 'light',
-      };
-    },
-  });
+        migration: (prev) => {
+            // TypeScript automatically infers 'prev' as the previous version 💎
+            return {
+                menuExpanded: prev.menuExpanded,
+                theme: prev.darkTheme ? 'dark' : 'light',
+            };
+        },
+    });
 
 // 2.1.3. Export the current config type
-export type Config = InferConfig<typeof ConfigManager>;
+export type Config = InferConfig<typeof configManager>;
 ```
 
 ⠀
@@ -242,9 +242,9 @@ import {ConfigProvider} from '@config-store/core';
 import {configManager} from './settings/manager';
 
 export const App = () => (
-  <ConfigProvider value={configManager}>
-    <Dashboard />
-  </ConfigProvider>
+    <ConfigProvider value={configManager}>
+        <Dashboard />
+    </ConfigProvider>
 );
 ```
 
@@ -258,13 +258,13 @@ Use the hook `useConfig` to read config:
 import {useConfig} from 'my-app/settings/hooks';
 
 export const PageWrapper = ({children}) => {
-  // Get the entire settings object
-  const config = useConfig();
+    // Get the entire settings object
+    const config = useConfig();
 
-  // Pass a selector to subscribe only to specific changes (renders optimized)
-  const theme = useConfig((s) => s.theme);
+    // Pass a selector to subscribe only to specific changes (renders optimized)
+    const theme = useConfig((s) => s.theme);
 
-  return <div data-theme={theme}>{children}</div>;
+    return <div data-theme={theme}>{children}</div>;
 };
 ```
 
@@ -278,16 +278,16 @@ Use the `useUpdateConfig` hook to update user settings and persist them:
 import {useUpdateConfig} from 'my-app/settings/hooks';
 
 export const ThemeToggler = () => {
-  const {update} = useUpdateConfig();
+    const {update} = useUpdateConfig();
 
-  // Assuming this will be user input
-  const newPartialConfig = {theme: 'dark'};
+    // Assuming this will be user input
+    const newPartialConfig = {theme: 'dark'};
 
-  return (
-    <div>
-      <button onClick={() => update(newPartialConfig)}>Switch to Dark Mode</button>
-    </div>
-  );
+    return (
+        <div>
+            <button onClick={() => update(newPartialConfig)}>Switch to Dark Mode</button>
+        </div>
+    );
 };
 ```
 
@@ -312,49 +312,49 @@ import {AsyncAdapter} from '@config-store/core';
 
 // Define your metadata shape (optional, defaults to unknown)
 interface MyMeta {
-  dataVersion: number;
+    dataVersion: number;
 }
 
 export const apiAdapter = new AsyncAdapter({
-  // Choose how to handle concurrent save requests
-  concurrency: 'abort',
+    // Choose how to handle concurrent save requests
+    concurrency: 'abort',
 
-  // READ must return the envelope: { config, metadata }
-  read: async () => {
-    const res = await fetch('/api/settings');
-    if (!res.ok) throw new Error('Failed to fetch');
+    // READ must return the envelope: { config, metadata }
+    read: async () => {
+        const res = await fetch('/api/settings');
+        if (!res.ok) throw new Error('Failed to fetch');
 
-    // Assuming server returns: { data: { config, meta } }
-    const json = await res.json();
+        // Assuming server returns: { data: { config, meta } }
+        const json = await res.json();
 
-    return json.data;
-  },
+        return json.data;
+    },
 
-  // WRITE receives the opaque metadata blob from the manager
-  // You should send it back to the server to handle optimistic locking or versioning
-  write: async (config, _lastCommittedConfig, metadata, signal) => {
-    const payload = {
-      config,
-      metadata, // e.g. { dataVersion: 1, schemaVersion: 1 }
-    };
+    // WRITE receives the opaque metadata blob from the manager
+    // You should send it back to the server to handle optimistic locking or versioning
+    write: async (config, _lastCommittedConfig, metadata, signal) => {
+        const payload = {
+            config,
+            metadata, // e.g. { dataVersion: 1, schemaVersion: 1 }
+        };
 
-    const res = await fetch('/api/settings', {
-      method: 'PUT',
-      body: JSON.stringify(payload),
-      headers: {'Content-Type': 'application/json'},
-      signal, // 'signal' is provided if you use concurrency: 'abort'
-    });
+        const res = await fetch('/api/settings', {
+            method: 'PUT',
+            body: JSON.stringify(payload),
+            headers: {'Content-Type': 'application/json'},
+            signal, // 'signal' is provided if you use concurrency: 'abort'
+        });
 
-    if (!res.ok) throw new Error('Save Failed');
+        if (!res.ok) throw new Error('Save Failed');
 
-    // Optional: Return updated metadata/settings from server response
-    const json = await res.json();
-    return json.data;
-  },
+        // Optional: Return updated metadata/settings from server response
+        const json = await res.json();
+        return json.data;
+    },
 
-  onWriteError: (error) => {
-    console.error('[ConfigStore] Background save failed:', error);
-  },
+    onWriteError: (error) => {
+        console.error('[ConfigStore] Background save failed:', error);
+    },
 });
 ```
 
@@ -363,7 +363,7 @@ Then register your adapter with the ConfigManager:
 ```ts
 import {apiAdapter} from './adapter';
 
-export const ConfigManager = ConfigManager.create(adapter);
+export const configManager = ConfigManager.create(adapter);
 ```
 
 ⠀
@@ -387,16 +387,16 @@ When a new save starts, the library automatically aborts the previous pending re
 
 ```ts
 new AsyncAdapter({
-  concurrency: 'abort', // default
+    concurrency: 'abort', // default
 
-  write: async (config, _lastCommittedConfig, metadata, signal) => {
-    // Pass the signal to fetch!
-    await fetch('/api/settings', {
-      method: 'POST',
-      body: JSON.stringify({config, metadata}),
-      signal,
-    });
-  },
+    write: async (config, _lastCommittedConfig, metadata, signal) => {
+        // Pass the signal to fetch!
+        await fetch('/api/settings', {
+            method: 'POST',
+            body: JSON.stringify({config, metadata}),
+            signal,
+        });
+    },
 });
 ```
 
@@ -423,14 +423,14 @@ The library waits for Request A to finish before sending Request B.
 
 ```ts
 new AsyncAdapter({
-  concurrency: 'queue',
+    concurrency: 'queue',
 
-  write: async (config) => {
-    // This will never run in parallel with another write
-    await fetch('/api/settings', {
-      /*...*/
-    });
-  },
+    write: async (config) => {
+        // This will never run in parallel with another write
+        await fetch('/api/settings', {
+            /*...*/
+        });
+    },
 });
 ```
 
@@ -444,8 +444,8 @@ The return type of `write` function is `AdapterEnvelope | void`, where `AdapterE
 
 ```ts
 {
-  config: unknown;
-  metadata: TMeta;
+    config: unknown;
+    metadata: TMeta;
 }
 ```
 
@@ -455,17 +455,17 @@ Return `AdapterEnvelope`: The library silently updates the store with the data r
 
 ```ts
 const apiAdapter = new AsyncAdapter({
-  write: async (config, _lastCommittedConfig, metadata, signal) => {
-    const res = await fetch('/api/settings', {
-      /*...*/
-    });
+    write: async (config, _lastCommittedConfig, metadata, signal) => {
+        const res = await fetch('/api/settings', {
+            /*...*/
+        });
 
-    const json = await res.json();
+        const json = await res.json();
 
-    // The server sanitized the volume and bumped the version.
-    // Assuming json contains `{ data: { config, metadata }}`
-    return json.data;
-  },
+        // The server sanitized the volume and bumped the version.
+        // Assuming json contains `{ data: { config, metadata }}`
+        return json.data;
+    },
 });
 ```
 
@@ -479,26 +479,26 @@ Note: A config store update triggered by the adapter's return value will not tri
 import {useUpdateConfig} from '@config-store/react';
 
 export const ThemeToggler = () => {
-  const {update, isSaving} = useUpdateConfig();
+    const {update, isSaving} = useUpdateConfig();
 
-  const toggle = async (newTheme: string) => {
-    try {
-      // 1. Updates UI immediately (Optimistic)
-      // 2. Awaits the adapter's write operation
-      await update({theme: newTheme});
-      toast.success('Saved!');
-    } catch (err) {
-      // 3. At this point, settings will automatically rollback
-      toast.error('Failed to save theme');
-    }
-  };
+    const toggle = async (newTheme: string) => {
+        try {
+            // 1. Updates UI immediately (Optimistic)
+            // 2. Awaits the adapter's write operation
+            await update({theme: newTheme});
+            toast.success('Saved!');
+        } catch (err) {
+            // 3. At this point, settings will automatically rollback
+            toast.error('Failed to save theme');
+        }
+    };
 
-  return (
-    <div>
-      <button onClick={toggle}>{isSaving ? 'Saving...' : 'Switch to Dark Mode'}</button>
-      {error && <span className="error">Save failed!</span>}
-    </div>
-  );
+    return (
+        <div>
+            <button onClick={toggle}>{isSaving ? 'Saving...' : 'Switch to Dark Mode'}</button>
+            {error && <span className="error">Save failed!</span>}
+        </div>
+    );
 };
 ```
 
