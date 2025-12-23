@@ -290,7 +290,37 @@ describe('ConfigManager', () => {
   });
 
   describe('Updates (save)', () => {
-    it('updates the state and persists via the adapter that returns the exact config and meta', async () => {
+    it('updates the state and persists via the adapter that returns the exact config and meta, without prior loading', async () => {
+      const manager = ConfigManager.create(adapter).addVersion({
+        version: 1,
+        schema: z.object({theme: z.string().default('light')}).prefault({}),
+      });
+
+      await manager.save({theme: 'dark'});
+
+      m = 'Manager store';
+      assert.deepStrictEqual(manager.config, {theme: 'dark'}, m);
+
+      m = 'Manager state';
+      assert.deepEqual(
+        manager.state,
+        {
+          error: null,
+          hasBeenHydrated: true,
+          metadata: {
+            dataVersion: 1,
+            schemaVersion: 1,
+          },
+          status: 'success',
+        },
+        m
+      );
+
+      m = 'Adapter store';
+      assert.deepStrictEqual(adapter.state?.config, {theme: 'dark'}, m);
+    });
+
+    it('updates the state and persists via the adapter that returns the exact config and meta, with prior loading', async () => {
       const manager = ConfigManager.create(adapter).addVersion({
         version: 1,
         schema: z.object({theme: z.string().default('light')}).prefault({}),
@@ -301,6 +331,21 @@ describe('ConfigManager', () => {
 
       m = 'Manager store';
       assert.deepStrictEqual(manager.config, {theme: 'dark'}, m);
+
+      m = 'Manager state';
+      assert.deepEqual(
+        manager.state,
+        {
+          error: null,
+          hasBeenHydrated: true,
+          metadata: {
+            dataVersion: 1,
+            schemaVersion: 1,
+          },
+          status: 'success',
+        },
+        m
+      );
 
       m = 'Adapter store';
       assert.deepStrictEqual(adapter.state?.config, {theme: 'dark'}, m);

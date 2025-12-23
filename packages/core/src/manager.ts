@@ -186,30 +186,11 @@ export class ConfigManager<TCurrent = undefined> {
 
     this.configStore.setState(config);
 
+    let responseEnvelope: AdapterEnvelope | void;
+
     try {
       // 3. Attempt Persistence
-      const responseEnvelope: AdapterEnvelope | void = await this.adapter.write(
-        config,
-        optimisticMetadata
-      );
-
-      // 4. Handle Success Response
-      // If adapter returns a body, we accept it as the new truth (e.g. server sanitization)
-      if (responseEnvelope) {
-        if (responseEnvelope.metadata.schemaVersion > this.schemaVersion) {
-          throw new ConfigSchemaOutdatedError(
-            responseEnvelope.metadata.schemaVersion,
-            this.schemaVersion
-          );
-        }
-
-        const migratedEnvelope: AdapterEnvelope = this.migrate(responseEnvelope);
-        this.setDataVersion(responseEnvelope.metadata.dataVersion);
-        this.configStore.setState(migratedEnvelope.config as TCurrent);
-        return migratedEnvelope.config as TCurrent;
-      } else {
-        return config;
-      }
+      responseEnvelope = await this.adapter.write(config, optimisticMetadata);
     } catch (error) {
       // 5. Handle Errors
 
@@ -236,6 +217,26 @@ export class ConfigManager<TCurrent = undefined> {
       this.configStore.setState(previousConfig);
 
       throw error;
+    }
+
+    this.setStatusSuccess();
+
+    // 4. Handle Success Response
+    // If adapter returns a body, we accept it as the new truth (e.g. server sanitization)
+    if (responseEnvelope) {
+      if (responseEnvelope.metadata.schemaVersion > this.schemaVersion) {
+        throw new ConfigSchemaOutdatedError(
+          responseEnvelope.metadata.schemaVersion,
+          this.schemaVersion
+        );
+      }
+
+      const migratedEnvelope: AdapterEnvelope = this.migrate(responseEnvelope);
+      this.setDataVersion(responseEnvelope.metadata.dataVersion);
+      this.configStore.setState(migratedEnvelope.config as TCurrent);
+      return migratedEnvelope.config as TCurrent;
+    } else {
+      return config;
     }
   }
 

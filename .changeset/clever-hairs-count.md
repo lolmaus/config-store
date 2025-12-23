@@ -21,6 +21,7 @@ Improve error handling and retries when loading.
         - `manager.isSuccess`, typed as `boolean`;
         - `manager.isError`, typed as `boolean`;
         - `manager.hasBeenHydrated` — shortcut for `manager.state.hasBeenHydrated`, typed as `boolean`;
+    - Fix: correctly set success and hasBeenHydrated state on save.
 
 - `AsyncAdapter`:
     - Added `onReadError` to `AsyncAdapterOptions`.
