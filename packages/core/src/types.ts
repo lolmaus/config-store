@@ -2,11 +2,26 @@ import {ZodType} from 'zod';
 import type {ConfigManager} from './manager.js';
 
 /**
+ * Lets you track the loading state of the ConfigManager
+ */
+export type ManagerStatus = 'initial' | 'loading' | 'success' | 'error';
+
+/**
+ * Shape of the state object, exposed as a Zustand store for reactivity
+ */
+export interface ManagerState {
+  readonly status: ManagerStatus;
+  readonly error: unknown | null;
+  readonly hasBeenHydrated: boolean;
+  readonly metadata: Meta;
+}
+
+/**
  * Base type for metadata
  */
 export interface Meta {
-  dataVersion: number;
-  schemaVersion: number;
+  readonly dataVersion: number;
+  readonly schemaVersion: number;
 }
 
 /**

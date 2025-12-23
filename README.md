@@ -11,7 +11,7 @@ A strict, schema-first config manager designed for long-lived frontend apps. It 
 - **Concurrency Control:** The `AsyncAdapter` provides three strategies for parallel writes:
     - `abort`: Cancels previous pending requests (default, relies on AbortController).
     - `optimistic`: Sends all requests but handles `409 Conflict` via versioning (requires backend logic).
-    - `queue`: Sequential execution (for legacy backends).
+    - `sequential`: Wait for each update to finish before processing the next one. Updates pile up in a queue. Useful for legacy backends, at the cost of UX.
 - **Framework-agnostic:** The core can be used with vanilla JS or in any framework.
 - **Framework integrations:** Offers the following integrations:
     - **React**: Includes a `useConfig` hook with **selector support** (e.g., `s => s.theme`). This allows a component to rerender only when the relevant individual setting changes. Other changes to the config will not cause rerenders.
@@ -310,11 +310,6 @@ In e. g. `src/settings/adapter.ts`:
 ```ts
 import {AsyncAdapter} from '@config-store/core';
 
-// Define your metadata shape (optional, defaults to unknown)
-interface MyMeta {
-    dataVersion: number;
-}
-
 export const apiAdapter = new AsyncAdapter({
     // Choose how to handle concurrent save requests
     concurrency: 'abort',
@@ -324,9 +319,9 @@ export const apiAdapter = new AsyncAdapter({
         const res = await fetch('/api/settings');
         if (!res.ok) throw new Error('Failed to fetch');
 
-        // Assuming server returns: { data: { config, meta } }
         const json = await res.json();
 
+        // Assuming server returns: { data: { config, metadata } }
         return json.data;
     },
 
@@ -349,6 +344,8 @@ export const apiAdapter = new AsyncAdapter({
 
         // Optional: Return updated metadata/settings from server response
         const json = await res.json();
+
+        // Assuming server returns: { data: { config, metadata } }
         return json.data;
     },
 
@@ -408,7 +405,7 @@ new AsyncAdapter({
 
 The library fires requests immediately. By passing the `metadata` (containing version numbers) in your `write` function, your server can reject outdated writes (e.g., returning `409 Conflict`).
 
-The library treats the `metadata` object as opaque context: it stores it and passes it back to you during writes, allowing you to implement version increments or timestamps without polluting your settings schema.
+The adapter stores metadata separately from the config, allowing you to implement version increments or timestamps without polluting your settings schema.
 
 ⠀
 
@@ -423,7 +420,7 @@ The library waits for Request A to finish before sending Request B.
 
 ```ts
 new AsyncAdapter({
-    concurrency: 'queue',
+    concurrency: 'sequential',
 
     write: async (config) => {
         // This will never run in parallel with another write
@@ -445,7 +442,7 @@ The return type of `write` function is `AdapterEnvelope | void`, where `AdapterE
 ```ts
 {
     config: unknown;
-    metadata: TMeta;
+    metadata: Meta;
 }
 ```
 

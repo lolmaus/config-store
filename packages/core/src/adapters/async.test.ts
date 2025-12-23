@@ -219,7 +219,7 @@ describe('AsyncAdapter', () => {
     });
   });
 
-  describe('write() — Concurrency: "queue"', () => {
+  describe('write() — Concurrency: "sequential"', () => {
     it('queues requests and passes correct metadata to each', async () => {
       let resolveFirst: (() => void) | undefined;
 
@@ -235,7 +235,7 @@ describe('AsyncAdapter', () => {
       adapter = new AsyncAdapter({
         read: readMock,
         write: slowMock,
-        concurrency: 'queue',
+        concurrency: 'sequential',
       });
 
       // Req A
@@ -299,7 +299,29 @@ describe('AsyncAdapter', () => {
   });
 
   describe('Error Handling', () => {
-    it('calls onWriteError when write fails', async () => {
+    it('calls custom onReadError when read fails', async () => {
+      const error = new Error('Read failed');
+      const failMock = mock.fn(async () => {
+        throw error;
+      });
+      const onErrorMock = mock.fn();
+
+      adapter = new AsyncAdapter({
+        read: failMock,
+        write: writeMock,
+        onReadError: onErrorMock,
+      });
+
+      const p = adapter.read();
+
+      m = 'Should propagate the write error to the caller';
+      await assert.rejects(p, error, m);
+
+      m = 'Should call onReadError hook exactly once';
+      assert.strictEqual(onErrorMock.mock.callCount(), 1, m);
+    });
+
+    it('calls custom onWriteError when write fails', async () => {
       const error = new Error('Save failed');
       const failMock = mock.fn(async () => {
         throw error;
@@ -398,7 +420,7 @@ describe('AsyncAdapter', () => {
       adapter = new AsyncAdapter({
         read: readMock,
         write: diffPatchMock,
-        concurrency: 'queue',
+        concurrency: 'sequential',
         onWriteError: errorSpy,
       });
 

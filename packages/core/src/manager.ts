@@ -1,6 +1,12 @@
 import z, {type ZodType} from 'zod';
 import type {BaseAdapter} from './adapters/base.js';
-import {type AdapterEnvelope, type Meta, type VersionDef} from './types.js';
+import {
+  type AdapterEnvelope,
+  type ManagerState,
+  type ManagerStatus,
+  type Meta,
+  type VersionDef,
+} from './types.js';
 import {createStore, type StoreApi} from 'zustand/vanilla';
 import {ConfigSchemaOutdatedError, ConfigConflictError} from './errors.js';
 
@@ -11,9 +17,9 @@ export class ConfigManager<TCurrent = undefined> {
 
   protected adapter: BaseAdapter;
   protected versions: VersionDef<any, any>[]; // eslint-disable-line @typescript-eslint/no-explicit-any
-  protected schema?: z.ZodType<TCurrent>;
-  public store: StoreApi<TCurrent>;
-  public metadata: Meta;
+  protected schema: z.ZodType<TCurrent> | undefined;
+  protected configStore: StoreApi<TCurrent> | undefined;
+  protected stateStore: StoreApi<ManagerState> | undefined;
 
   // ------------------------
   // Constructor
@@ -27,12 +33,22 @@ export class ConfigManager<TCurrent = undefined> {
     this.adapter = adapter;
     this.versions = versions;
     this.schema = schema;
-    this.store = createStore<TCurrent>(() => undefined as TCurrent);
 
-    this.metadata = {
-      dataVersion: 0,
-      schemaVersion: versions.at(-1)?.version ?? 0,
-    };
+    if (this.schema) {
+      this.stateStore = createStore<ManagerState>(() => ({
+        status: 'initial',
+        error: null,
+        hasBeenHydrated: false,
+        metadata: {
+          dataVersion: 0,
+          schemaVersion: versions.at(-1)?.version ?? 0,
+        },
+      }));
+
+      const {config} = this.migrate();
+
+      this.configStore = createStore<TCurrent>(() => config as TCurrent);
+    }
   }
 
   // ------------------------
@@ -44,62 +60,131 @@ export class ConfigManager<TCurrent = undefined> {
   }
 
   // ------------------------
+  // Public Getters
+  // ------------------------
+
+  get config(): TCurrent {
+    if (!this.configStore) {
+      throw new Error('[@config-store] Attempted to access current config before adding a version');
+    }
+
+    return this.configStore.getState();
+  }
+
+  get state(): ManagerState {
+    if (!this.stateStore) {
+      throw new Error('[@config-store] Attempted to access current state before adding a version');
+    }
+
+    return this.stateStore.getState();
+  }
+
+  get status(): ManagerStatus {
+    return this.state.status;
+  }
+
+  get error(): unknown {
+    return this.state.error;
+  }
+
+  get metadata(): Meta {
+    return this.state.metadata;
+  }
+
+  get dataVersion(): number {
+    return this.metadata.dataVersion;
+  }
+
+  get schemaVersion(): number {
+    return this.metadata.schemaVersion;
+  }
+
+  get isInitial(): boolean {
+    return this.state.status === 'initial';
+  }
+
+  get isLoading(): boolean {
+    return this.state.status === 'loading';
+  }
+
+  get isSuccess(): boolean {
+    return this.state.status === 'success';
+  }
+
+  get isError(): boolean {
+    return this.state.status === 'error';
+  }
+
+  get hasBeenHydrated(): boolean {
+    return this.state.hasBeenHydrated;
+  }
+
+  // ------------------------
   // Public methods
   // ------------------------
 
-  addVersion<TNext>(
-    // We use a conditional type to differentiate the First Version from Updates
-    args: {
-      version: number;
-      schema: z.ZodType<TNext>;
-    } & ([TCurrent] extends [undefined]
-      ? {migration?: never} // First version: No migration allowed
-      : {migration: (prev: TCurrent) => TNext}) // Update: Migration required
-  ): ConfigManager<TNext> {
-    if (args.version <= this.metadata.schemaVersion) {
+  addVersion<TNext>(versionDef: VersionDef<TCurrent, TNext>): ConfigManager<TNext> {
+    if (this.stateStore && versionDef.version <= this.schemaVersion) {
       throw new Error(
-        `[@config-manager] Version numbers must be incremental, but after ${this.metadata.schemaVersion} received ${args.version}`
+        `[@config-manager] Version numbers must be incremental, but after ${this.schemaVersion} received ${versionDef.version}`
       );
     }
 
     // 1. Create the new definition object
     const newVersion: VersionDef<TCurrent, TNext> = {
-      version: args.version,
-      schema: args.schema,
-      migration: args.migration,
+      version: versionDef.version,
+      schema: versionDef.schema,
+      migration: versionDef.migration,
     };
 
     // Returning a NEW instance with the updated generic type <TNext>.
     // We pass the accumulated history (previous versions + new version).
-    return new ConfigManager<TNext>(this.adapter, [...this.versions, newVersion], args.schema);
-  }
-
-  get(): TCurrent {
-    return this.store.getState();
+    return new ConfigManager<TNext>(
+      this.adapter,
+      [...this.versions, newVersion],
+      versionDef.schema
+    );
   }
 
   async load(): Promise<void> {
-    const incomingEnvelope: AdapterEnvelope | void = await this.adapter.read();
+    if (!this.configStore) {
+      throw new Error('[@config-store] Attempted to load config before adding a version');
+    }
+
+    this.setStatusLoading();
+
+    let incomingEnvelope: AdapterEnvelope | void;
+
+    try {
+      incomingEnvelope = await this.adapter.read();
+    } catch (e) {
+      this.setStatusError(e);
+      return;
+    }
+
+    this.setStatusSuccess();
+
     const migratedEnvelope: AdapterEnvelope = this.migrate(incomingEnvelope);
 
-    this.metadata = migratedEnvelope.metadata;
-    this.store.setState(migratedEnvelope.config as TCurrent);
+    this.setMetadata(migratedEnvelope.metadata);
+    this.configStore.setState(migratedEnvelope.config as TCurrent);
   }
 
   async save(config: TCurrent): Promise<TCurrent> {
+    if (!this.configStore) {
+      throw new Error('[@config-store] Attempted to save config before adding a version');
+    }
+
     // 1. Snapshot previous state for potential rollback
-    const previousConfig = this.store.getState();
+    const previousConfig = this.configStore.getState();
     const previousMetadata = {...this.metadata};
 
     // 2. Optimistic Update
     // We increment the version locally and update the store immediately
-    this.metadata = {
-      ...this.metadata,
-      dataVersion: this.metadata.dataVersion + 1,
-    };
+    this.incrementDataVersion();
     const optimisticMetadata = {...this.metadata};
 
-    this.store.setState(config);
+    this.configStore.setState(config);
 
     try {
       // 3. Attempt Persistence
@@ -111,16 +196,16 @@ export class ConfigManager<TCurrent = undefined> {
       // 4. Handle Success Response
       // If adapter returns a body, we accept it as the new truth (e.g. server sanitization)
       if (responseEnvelope) {
-        if (responseEnvelope.metadata.schemaVersion > this.metadata.schemaVersion) {
+        if (responseEnvelope.metadata.schemaVersion > this.schemaVersion) {
           throw new ConfigSchemaOutdatedError(
             responseEnvelope.metadata.schemaVersion,
-            this.metadata.schemaVersion
+            this.schemaVersion
           );
         }
 
         const migratedEnvelope: AdapterEnvelope = this.migrate(responseEnvelope);
-        this.metadata.dataVersion = responseEnvelope.metadata.dataVersion;
-        this.store.setState(migratedEnvelope.config as TCurrent);
+        this.setDataVersion(responseEnvelope.metadata.dataVersion);
+        this.configStore.setState(migratedEnvelope.config as TCurrent);
         return migratedEnvelope.config as TCurrent;
       } else {
         return config;
@@ -132,23 +217,23 @@ export class ConfigManager<TCurrent = undefined> {
       // If the manager's dataVersion is HIGHER than what we sent in this request,
       // it means a newer save() has already started/completed.
       // We should ignore this error to avoid reverting the newer state.
-      if (this.metadata.dataVersion > optimisticMetadata.dataVersion) {
-        return this.store.getState();
+      if (this.dataVersion > optimisticMetadata.dataVersion) {
+        return this.configStore.getState();
       }
 
       // Handle Conflict (Server has newer data)
       if (error instanceof ConfigConflictError) {
         // Heal: We accept the server's data
         const migratedEnvelope = this.migrate(error.serverEnvelope);
-        this.metadata = migratedEnvelope.metadata;
-        this.store.setState(migratedEnvelope.config as TCurrent);
+        this.setMetadata(migratedEnvelope.metadata);
+        this.configStore.setState(migratedEnvelope.config as TCurrent);
         return migratedEnvelope.config as TCurrent;
       }
 
       // Handle Generic Error (Network, etc)
       // Rollback: Revert to the state before this request started
-      this.metadata = previousMetadata;
-      this.store.setState(previousConfig);
+      this.setMetadata(previousMetadata);
+      this.configStore.setState(previousConfig);
 
       throw error;
     }
@@ -189,7 +274,7 @@ export class ConfigManager<TCurrent = undefined> {
     let currentEnvelope: AdapterEnvelope = initialEnvelope;
 
     // Repeat until we get to current schema version
-    while (currentEnvelope.metadata.schemaVersion < this.metadata.schemaVersion) {
+    while (currentEnvelope.metadata.schemaVersion < this.schemaVersion) {
       const currentVersionDef = this.versions.find(
         (v) => v.version === currentEnvelope.metadata.schemaVersion
       );
@@ -262,6 +347,83 @@ export class ConfigManager<TCurrent = undefined> {
     }
 
     const config: TCurrent = this.parse(undefined, this.schema);
+
     return {config, metadata: this.metadata};
+  }
+
+  protected setStatusLoading() {
+    if (!this.stateStore) {
+      throw new Error('[@config-store] Attempted to set metadata before adding a version');
+    }
+
+    this.stateStore.setState((state) => ({
+      ...state,
+      status: 'loading',
+      error: null,
+    }));
+  }
+
+  protected setStatusSuccess() {
+    if (!this.stateStore) {
+      throw new Error('[@config-store] Attempted to set metadata before adding a version');
+    }
+
+    this.stateStore.setState((state) => ({
+      ...state,
+      status: 'success',
+      error: null,
+      hasBeenHydrated: true,
+    }));
+  }
+
+  protected setStatusError(error: unknown) {
+    if (!this.stateStore) {
+      throw new Error('[@config-store] Attempted to set metadata before adding a version');
+    }
+
+    this.stateStore.setState((state) => ({
+      ...state,
+      status: 'error',
+      error,
+    }));
+  }
+
+  protected setMetadata(metadata: Meta) {
+    if (!this.stateStore) {
+      throw new Error('[@config-store] Attempted to set metadata before adding a version');
+    }
+
+    this.stateStore.setState((state) => ({
+      ...state,
+      metadata,
+    }));
+  }
+
+  protected setDataVersion(dataVersion: number) {
+    if (!this.stateStore) {
+      throw new Error('[@config-store] Attempted to set dataVersion before adding a version');
+    }
+
+    this.stateStore.setState((state) => ({
+      ...state,
+      metadata: {
+        ...state.metadata,
+        dataVersion,
+      },
+    }));
+  }
+
+  protected incrementDataVersion() {
+    if (!this.stateStore) {
+      throw new Error('[@config-store] Attempted to increment dataVersion before adding a version');
+    }
+
+    this.stateStore.setState((state) => ({
+      ...state,
+      metadata: {
+        ...state.metadata,
+        dataVersion: state.metadata.dataVersion + 1,
+      },
+    }));
   }
 }

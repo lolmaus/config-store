@@ -21,6 +21,13 @@ export abstract class BaseAdapter {
   /**
    * Optional hook for handling errors (logging, toasts, etc).
    */
+  onReadError(error: unknown): void {
+    console.error('[ConfigManager] Read failed:', error);
+  }
+
+  /**
+   * Optional hook for handling errors (logging, toasts, etc).
+   */
   onWriteError(error: unknown): void {
     console.error('[ConfigManager] Write failed:', error);
   }

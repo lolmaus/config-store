@@ -1,7 +1,7 @@
 import {BaseAdapter} from './base.js';
 import type {AdapterEnvelope, Meta} from '../types.js';
 
-export type ConcurrencyStrategy = 'abort' | 'optimistic' | 'queue';
+export type ConcurrencyStrategy = 'abort' | 'optimistic' | 'sequential';
 
 export interface AsyncAdapterOptions {
   read: () => Promise<AdapterEnvelope>;
@@ -16,6 +16,7 @@ export interface AsyncAdapterOptions {
     signal?: AbortSignal
   ) => Promise<AdapterEnvelope | void>;
 
+  onReadError?: (error: unknown) => void;
   onWriteError?: (error: unknown) => void;
   concurrency?: ConcurrencyStrategy;
 }
@@ -35,6 +36,14 @@ export class AsyncAdapter extends BaseAdapter {
     this.options = options;
   }
 
+  override onReadError(error: unknown): void {
+    if (this.options.onReadError) {
+      this.options.onReadError(error);
+    } else {
+      super.onReadError(error);
+    }
+  }
+
   override onWriteError(error: unknown): void {
     if (this.options.onWriteError) {
       this.options.onWriteError(error);
@@ -44,7 +53,13 @@ export class AsyncAdapter extends BaseAdapter {
   }
 
   async read(): Promise<AdapterEnvelope> {
-    const envelope = await this.options.read();
+    let envelope: AdapterEnvelope;
+    try {
+      envelope = await this.options.read();
+    } catch (e) {
+      this.onReadError(e);
+      throw e;
+    }
 
     // Initialize our anchor point from the server's truth
     this.lastCommitted = envelope.config;
@@ -100,7 +115,7 @@ export class AsyncAdapter extends BaseAdapter {
     }
 
     // Strategy: Queue
-    if (strategy === 'queue') {
+    if (strategy === 'sequential') {
       // We wrap runWrite in a closure so it accesses 'this.lastCommitted'
       // lazily, only when the queue actually executes this task.
       const queuedTask = this.writeQueue.then(() => runWrite());

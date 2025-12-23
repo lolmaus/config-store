@@ -2,8 +2,9 @@ import {describe, it, mock, beforeEach} from 'node:test';
 import assert from 'node:assert/strict';
 import {z} from 'zod';
 import {ConfigManager} from './manager.js'; // The class to be implemented
-import type {AdapterEnvelope} from './types.js';
+import type {AdapterEnvelope, ManagerState} from './types.js';
 import {BaseAdapter} from './adapters/base.js';
+import {createStore} from 'zustand';
 
 class MockAdapter extends BaseAdapter {
   state: AdapterEnvelope | undefined = undefined;
@@ -23,30 +24,77 @@ describe('ConfigManager', () => {
   });
 
   describe('Initialization & Defaults', () => {
-    it('initializes with default values when adapter returns undefined (empty storage)', async () => {
+    it('initializes with default values when adapter returns undefined (empty storage) + test state', async () => {
       // Setup: Adapter returns undefined by default (see MockAdapter)
 
-      const manager = ConfigManager.create(adapter).addVersion({
-        version: 1,
-        schema: z
-          .object({
-            theme: z.enum(['light', 'dark']).default('light'),
-            notifications: z.boolean().default(true),
-          })
-          .prefault({}),
-      });
+      const manager = ConfigManager.create(adapter)
+        //
+        .addVersion({
+          version: 1,
+          schema: z
+            .object({
+              theme: z.enum(['light', 'dark']).default('light'),
+              notifications: z.boolean().default(true),
+            })
+            .prefault({}),
+        });
 
-      await manager.load();
+      m = 'manager.state initial';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          status: 'initial',
+          error: null,
+          hasBeenHydrated: false,
+          metadata: {
+            dataVersion: 0,
+            schemaVersion: 1,
+          },
+        } satisfies ManagerState,
+        m
+      );
 
-      const config = manager.get();
+      const promise = manager.load();
 
-      m = 'config deep equality';
+      m = 'manager.state loading';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          status: 'loading',
+          error: null,
+          hasBeenHydrated: false,
+          metadata: {
+            dataVersion: 0,
+            schemaVersion: 1,
+          },
+        } satisfies ManagerState,
+        m
+      );
+
+      await promise;
+
+      m = 'manager.config';
       assert.deepStrictEqual(
-        config,
+        manager.config,
         {
           theme: 'light',
           notifications: true,
         },
+        m
+      );
+
+      m = 'manager.state final';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          status: 'success',
+          error: null,
+          hasBeenHydrated: true,
+          metadata: {
+            dataVersion: 0,
+            schemaVersion: 1,
+          },
+        } satisfies ManagerState,
         m
       );
     });
@@ -70,11 +118,9 @@ describe('ConfigManager', () => {
 
       await manager.load();
 
-      const config = manager.get();
-
       m = 'config deep equality';
       assert.deepStrictEqual(
-        config,
+        manager.config,
         {
           theme: 'dark',
           notifications: false,
@@ -103,7 +149,7 @@ describe('ConfigManager', () => {
 
       await manager.load();
 
-      const {theme} = manager.get();
+      const {theme} = manager.config;
 
       m = 'theme should fall back to default';
       assert.strictEqual(theme, 'light', m);
@@ -122,10 +168,10 @@ describe('ConfigManager', () => {
 
       await manager.load();
 
-      const config = manager.get();
+      const {theme} = manager.config;
 
       // Should be default
-      assert.strictEqual(config.theme, 'foo');
+      assert.strictEqual(theme, 'foo');
     });
 
     it('throws when the schema does not have a prefault', async () => {
@@ -134,17 +180,20 @@ describe('ConfigManager', () => {
         metadata: {dataVersion: 1, schemaVersion: 1},
       };
 
-      const manager = ConfigManager.create(adapter).addVersion({
-        version: 1,
-        schema: z.object({theme: z.literal(['foo', 'bar']).default('foo')}),
-      });
+      const manager = ConfigManager.create(adapter);
 
-      m = 'should reject with an error';
-      await assert.rejects(
-        manager.load(),
-        (err: Error) =>
-          err.message ===
-          '[@config-store] Failed to revert to defaults. Schema must be defined with `.prefault()` on the outer object and `.default()` on every property.',
+      m = 'addVersion should throw with an error';
+      await assert.throws(
+        () => {
+          manager.addVersion({
+            version: 1,
+            schema: z.object({theme: z.literal(['foo', 'bar']).default('foo')}),
+          });
+        },
+        (e) =>
+          e instanceof Error &&
+          e.message ===
+            '[@config-store] Failed to revert to defaults. Schema must be defined with `.prefault()` on the outer object and `.default()` on every property.',
         m
       );
     });
@@ -175,10 +224,8 @@ describe('ConfigManager', () => {
 
       await manager.load();
 
-      const config = manager.get();
-
       m = 'config should be migrated';
-      assert.deepStrictEqual(config, {theme: 'dark'}, m);
+      assert.deepStrictEqual(manager.config, {theme: 'dark'}, m);
     });
 
     it('runs multiple migrations sequentially (v1 -> v2 -> v3)', async () => {
@@ -191,25 +238,23 @@ describe('ConfigManager', () => {
       const manager = ConfigManager.create(adapter)
         .addVersion({
           version: 1,
-          schema: z.object({val: z.number()}),
+          schema: z.object({val: z.number().default(123)}).prefault({}),
         })
         .addVersion({
           version: 2,
-          schema: z.object({val: z.number()}),
+          schema: z.object({val: z.number().default(123)}).prefault({}),
           migration: (prev) => ({val: prev.val + 1}), // 1 -> 2
         })
         .addVersion({
           version: 3,
-          schema: z.object({val: z.number()}),
+          schema: z.object({val: z.number().default(123)}).prefault({}),
           migration: (prev) => ({val: prev.val * 10}), // 2 -> 20
         });
 
       await manager.load();
 
-      const config = manager.get();
-
       m = 'config should be migrated';
-      assert.deepStrictEqual(config, {val: 20}, m);
+      assert.deepStrictEqual(manager.config, {val: 20}, m);
     });
 
     it('errors on non-incremental version numbers (v1 -> v3 -> v2)', async () => {
@@ -255,7 +300,7 @@ describe('ConfigManager', () => {
       await manager.save({theme: 'dark'});
 
       m = 'Manager store';
-      assert.deepStrictEqual(manager.get(), {theme: 'dark'}, m);
+      assert.deepStrictEqual(manager.config, {theme: 'dark'}, m);
 
       m = 'Adapter store';
       assert.deepStrictEqual(adapter.state?.config, {theme: 'dark'}, m);
@@ -275,7 +320,7 @@ describe('ConfigManager', () => {
       await manager.save({theme: 'dark'});
 
       m = 'Manager store';
-      assert.deepStrictEqual(manager.get(), {theme: 'dark'}, m);
+      assert.deepStrictEqual(manager.config, {theme: 'dark'}, m);
 
       m = 'Adapter store';
       assert.deepStrictEqual(adapter.state?.config, {theme: 'dark'}, m);
@@ -299,7 +344,7 @@ describe('ConfigManager', () => {
       await manager.save({theme: 'dark'});
 
       m = 'Manager store';
-      assert.deepStrictEqual(manager.get(), {theme: 'DARK'}, m);
+      assert.deepStrictEqual(manager.config, {theme: 'DARK'}, m);
 
       m = 'Adapter store';
       assert.deepStrictEqual(adapter.state?.config, {theme: 'DARK'}, m);
@@ -309,6 +354,293 @@ describe('ConfigManager', () => {
 
       m = 'Adapter metadata.dataVersion';
       assert.deepStrictEqual(adapter.state?.metadata.dataVersion, 11, m);
+    });
+  });
+
+  describe('Getters', () => {
+    it('config', () => {
+      const manager = ConfigManager.create(adapter);
+
+      Object.defineProperty(manager, 'configStore', {
+        value: createStore<'foo'>(() => 'foo'),
+      });
+
+      m = 'manager.config';
+      assert.equal(manager.config, 'foo', m);
+    });
+
+    describe('state-based getters', () => {
+      it('state: initial, not hydrated', () => {
+        const manager = ConfigManager.create(adapter);
+
+        Object.defineProperty(manager, 'stateStore', {
+          value: createStore<ManagerState>(() => ({
+            status: 'initial',
+            error: null,
+            hasBeenHydrated: false,
+            metadata: {
+              dataVersion: 123,
+              schemaVersion: 321,
+            },
+          })),
+        });
+
+        m = 'manager.state';
+        assert.deepEqual(
+          manager.state,
+          {
+            status: 'initial',
+            error: null,
+            hasBeenHydrated: false,
+            metadata: {
+              dataVersion: 123,
+              schemaVersion: 321,
+            },
+          } satisfies ManagerState,
+          m
+        );
+
+        m = 'manager.status';
+        assert.equal(manager.status, 'initial', m);
+
+        m = 'manager.error';
+        assert.equal(manager.error, null, m);
+
+        m = 'manager.metadata';
+        assert.deepEqual(
+          manager.metadata,
+          {
+            dataVersion: 123,
+            schemaVersion: 321,
+          },
+          m
+        );
+
+        m = 'manager.dataVersion';
+        assert.equal(manager.dataVersion, 123, m);
+
+        m = 'manager.schemaVersion';
+        assert.equal(manager.schemaVersion, 321, m);
+
+        m = 'manager.isInitial';
+        assert.equal(manager.isInitial, true, m);
+
+        m = 'manager.isLoading';
+        assert.equal(manager.isLoading, false, m);
+
+        m = 'manager.isSuccess';
+        assert.equal(manager.isSuccess, false, m);
+
+        m = 'manager.isError';
+        assert.equal(manager.isError, false, m);
+
+        m = 'manager.hasBeenHydrated';
+        assert.equal(manager.hasBeenHydrated, false, m);
+      });
+
+      it('state: loading, not hydrated', () => {
+        const manager = ConfigManager.create(adapter);
+
+        Object.defineProperty(manager, 'stateStore', {
+          value: createStore<ManagerState>(() => ({
+            status: 'loading',
+            error: null,
+            hasBeenHydrated: false,
+            metadata: {
+              dataVersion: 123,
+              schemaVersion: 321,
+            },
+          })),
+        });
+
+        m = 'manager.state';
+        assert.deepEqual(
+          manager.state,
+          {
+            status: 'loading',
+            error: null,
+            hasBeenHydrated: false,
+            metadata: {
+              dataVersion: 123,
+              schemaVersion: 321,
+            },
+          } satisfies ManagerState,
+          m
+        );
+
+        m = 'manager.status';
+        assert.equal(manager.status, 'loading', m);
+
+        m = 'manager.error';
+        assert.equal(manager.error, null, m);
+
+        m = 'manager.metadata';
+        assert.deepEqual(
+          manager.metadata,
+          {
+            dataVersion: 123,
+            schemaVersion: 321,
+          },
+          m
+        );
+
+        m = 'manager.dataVersion';
+        assert.equal(manager.dataVersion, 123, m);
+
+        m = 'manager.schemaVersion';
+        assert.equal(manager.schemaVersion, 321, m);
+
+        m = 'manager.isInitial';
+        assert.equal(manager.isInitial, false, m);
+
+        m = 'manager.isLoading';
+        assert.equal(manager.isLoading, true, m);
+
+        m = 'manager.isSuccess';
+        assert.equal(manager.isSuccess, false, m);
+
+        m = 'manager.isError';
+        assert.equal(manager.isError, false, m);
+
+        m = 'manager.hasBeenHydrated';
+        assert.equal(manager.hasBeenHydrated, false, m);
+      });
+
+      it('state: success, hydrated', () => {
+        const manager = ConfigManager.create(adapter);
+
+        Object.defineProperty(manager, 'stateStore', {
+          value: createStore<ManagerState>(() => ({
+            status: 'success',
+            error: null,
+            hasBeenHydrated: true,
+            metadata: {
+              dataVersion: 123,
+              schemaVersion: 321,
+            },
+          })),
+        });
+
+        m = 'manager.state';
+        assert.deepEqual(
+          manager.state,
+          {
+            status: 'success',
+            error: null,
+            hasBeenHydrated: true,
+            metadata: {
+              dataVersion: 123,
+              schemaVersion: 321,
+            },
+          } satisfies ManagerState,
+          m
+        );
+
+        m = 'manager.status';
+        assert.equal(manager.status, 'success', m);
+
+        m = 'manager.error';
+        assert.equal(manager.error, null, m);
+
+        m = 'manager.metadata';
+        assert.deepEqual(
+          manager.metadata,
+          {
+            dataVersion: 123,
+            schemaVersion: 321,
+          },
+          m
+        );
+
+        m = 'manager.dataVersion';
+        assert.equal(manager.dataVersion, 123, m);
+
+        m = 'manager.schemaVersion';
+        assert.equal(manager.schemaVersion, 321, m);
+
+        m = 'manager.isInitial';
+        assert.equal(manager.isInitial, false, m);
+
+        m = 'manager.isLoading';
+        assert.equal(manager.isLoading, false, m);
+
+        m = 'manager.isSuccess';
+        assert.equal(manager.isSuccess, true, m);
+
+        m = 'manager.isError';
+        assert.equal(manager.isError, false, m);
+
+        m = 'manager.hasBeenHydrated';
+        assert.equal(manager.hasBeenHydrated, true, m);
+      });
+
+      it('state: error, hydrated', () => {
+        const manager = ConfigManager.create(adapter);
+
+        Object.defineProperty(manager, 'stateStore', {
+          value: createStore<ManagerState>(() => ({
+            status: 'error',
+            error: "I'm afraid I can't do that, Dave.",
+            hasBeenHydrated: true,
+            metadata: {
+              dataVersion: 123,
+              schemaVersion: 321,
+            },
+          })),
+        });
+
+        m = 'manager.state';
+        assert.deepEqual(
+          manager.state,
+          {
+            status: 'error',
+            error: "I'm afraid I can't do that, Dave.",
+            hasBeenHydrated: true,
+            metadata: {
+              dataVersion: 123,
+              schemaVersion: 321,
+            },
+          } satisfies ManagerState,
+          m
+        );
+
+        m = 'manager.status';
+        assert.equal(manager.status, 'error', m);
+
+        m = 'manager.error';
+        assert.equal(manager.error, "I'm afraid I can't do that, Dave.", m);
+
+        m = 'manager.metadata';
+        assert.deepEqual(
+          manager.metadata,
+          {
+            dataVersion: 123,
+            schemaVersion: 321,
+          },
+          m
+        );
+
+        m = 'manager.dataVersion';
+        assert.equal(manager.dataVersion, 123, m);
+
+        m = 'manager.schemaVersion';
+        assert.equal(manager.schemaVersion, 321, m);
+
+        m = 'manager.isInitial';
+        assert.equal(manager.isInitial, false, m);
+
+        m = 'manager.isLoading';
+        assert.equal(manager.isLoading, false, m);
+
+        m = 'manager.isSuccess';
+        assert.equal(manager.isSuccess, false, m);
+
+        m = 'manager.isError';
+        assert.equal(manager.isError, true, m);
+
+        m = 'manager.hasBeenHydrated';
+        assert.equal(manager.hasBeenHydrated, true, m);
+      });
     });
   });
 });
