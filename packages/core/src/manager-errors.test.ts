@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {z} from 'zod';
 import {ConfigManager} from './manager.js';
 import {BaseAdapter} from './adapters/base.js';
-import {type AdapterEnvelope, type ManagerState, type Meta} from './types.js';
+import {type AdapterEnvelope, type ManagerState, type ManagerMetadata} from './types.js';
 import {ConfigSchemaOutdatedError, ConfigConflictError} from './errors.js';
 
 // --- Types for Test ---
@@ -16,7 +16,7 @@ interface PendingRead {
 }
 interface PendingWrite extends PendingRead {
   config: unknown;
-  metadata: Meta;
+  metadata: ManagerMetadata;
 }
 
 // --- Advanced Mock Adapter ---
@@ -44,7 +44,7 @@ class ControlledMockAdapter extends BaseAdapter {
   // A list of pending write promises we can resolve/reject manually
   pendingWrites: PendingWrite[] = [];
 
-  write = mock.fn((nextConfig: unknown, metadata: Meta) => {
+  write = mock.fn((nextConfig: unknown, metadata: ManagerMetadata) => {
     return new Promise<AdapterEnvelope | void>((resolve, reject) => {
       this.pendingWrites.push({
         config: nextConfig,

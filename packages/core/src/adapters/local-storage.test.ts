@@ -2,7 +2,7 @@ import {teardown} from '../test-setup.js'; // Setup runs here
 import {describe, it, mock, beforeEach, after, type Mock} from 'node:test';
 import assert from 'node:assert/strict';
 import {LocalStorageAdapter} from './local-storage.js';
-import type {Meta} from '../types.js';
+import type {ManagerMetadata} from '../types.js';
 import {AdapterPayloadError} from '../errors.js';
 import {ZodError} from 'zod';
 
@@ -132,7 +132,7 @@ describe('LocalStorageAdapter', () => {
   describe('write()', () => {
     it('wraps settings and metadata in an envelope before saving', () => {
       const config: TestConfig = {theme: 'dark'};
-      const metadata: Meta = {dataVersion: 2, schemaVersion: 1};
+      const metadata: ManagerMetadata = {dataVersion: 2, schemaVersion: 1};
 
       adapter.write(config, metadata);
 
@@ -165,7 +165,7 @@ describe('LocalStorageAdapter', () => {
   describe('error handling', () => {
     it('re-throws error and calls onWriteError when storage fails', () => {
       const config: TestConfig = {theme: 'dark'};
-      const metadata: Meta = {dataVersion: 2, schemaVersion: 1};
+      const metadata: ManagerMetadata = {dataVersion: 2, schemaVersion: 1};
       const expectedError = new Error('QuotaExceededError');
 
       // 1. Simulate the failure

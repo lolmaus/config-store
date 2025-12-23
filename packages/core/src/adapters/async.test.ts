@@ -1,7 +1,7 @@
 import {describe, it, mock, beforeEach, afterEach, type Mock} from 'node:test';
 import assert from 'node:assert/strict';
 import {AsyncAdapter, type AsyncAdapterOptions} from './async.js';
-import type {AdapterEnvelope, Meta} from '../types.js';
+import type {AdapterEnvelope, ManagerMetadata} from '../types.js';
 
 interface TestConfig {
   theme: 'light' | 'dark';
@@ -18,7 +18,7 @@ describe('AsyncAdapter', () => {
 
   // In-Memory Store State (Closure)
   let storedConfig: TestConfig;
-  let storedMeta: Meta;
+  let storedMeta: ManagerMetadata;
 
   beforeEach(() => {
     // 1. Initialize State
@@ -94,7 +94,7 @@ describe('AsyncAdapter', () => {
   describe('write() — Metadata', () => {
     it('passes metadata to the write function as the 3rd argument', async () => {
       const config: TestConfig = {theme: 'dark', volume: 50};
-      const metadata: Meta = {dataVersion: 1, schemaVersion: 1};
+      const metadata: ManagerMetadata = {dataVersion: 1, schemaVersion: 1};
 
       await adapter.write(config, metadata);
 
@@ -355,7 +355,7 @@ describe('AsyncAdapter', () => {
     it('Scenario: "Abort" strategy corrupts data by dropping aborted changes', async () => {
       // 1. Setup a "User" write function that calculates DIFFS
       const diffPatchMock = mock.fn(
-        async (next: unknown, prev: unknown, _m?: Meta, signal?: AbortSignal) => {
+        async (next: unknown, prev: unknown, _m?: ManagerMetadata, signal?: AbortSignal) => {
           // Explicit typing for test logic
           const n = next as TestConfig;
           const p = prev as TestConfig;

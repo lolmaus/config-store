@@ -1,5 +1,5 @@
 import {BaseAdapter} from './base.js';
-import type {AdapterEnvelope, Meta} from '../types.js';
+import type {AdapterEnvelope, ManagerMetadata} from '../types.js';
 
 export type ConcurrencyStrategy = 'abort' | 'optimistic' | 'sequential';
 
@@ -12,7 +12,7 @@ export interface AsyncAdapterOptions {
   write: (
     nextConfig: unknown,
     lastCommittedConfig: unknown | undefined,
-    metadata: Meta | undefined,
+    metadata: ManagerMetadata | undefined,
     signal?: AbortSignal
   ) => Promise<AdapterEnvelope | void>;
 
@@ -67,7 +67,7 @@ export class AsyncAdapter extends BaseAdapter {
     return envelope;
   }
 
-  async write(nextConfig: unknown, metadata: Meta): Promise<AdapterEnvelope | void> {
+  async write(nextConfig: unknown, metadata: ManagerMetadata): Promise<AdapterEnvelope | void> {
     const {concurrency = 'abort'} = this.options;
 
     try {
@@ -85,7 +85,7 @@ export class AsyncAdapter extends BaseAdapter {
 
   protected async executeWrite(
     nextConfig: unknown,
-    metadata: Meta | undefined,
+    metadata: ManagerMetadata | undefined,
     strategy: ConcurrencyStrategy
   ): Promise<AdapterEnvelope | void> {
     const runWrite = async (signal?: AbortSignal) => {

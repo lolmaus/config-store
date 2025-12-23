@@ -1,14 +1,14 @@
 import {describe, it, mock, beforeEach} from 'node:test';
 import assert from 'node:assert/strict';
 import {BaseAdapter} from './base.js';
-import type {AdapterEnvelope, Meta} from '../types.js';
+import type {AdapterEnvelope, ManagerMetadata} from '../types.js';
 
 class TestAdapter extends BaseAdapter {
   async read(): Promise<AdapterEnvelope> {
     return {config: {value: 'default'}, metadata: {dataVersion: 1, schemaVersion: 1}};
   }
 
-  async write(nextConfig: unknown, metadata: Meta): Promise<AdapterEnvelope> {
+  async write(nextConfig: unknown, metadata: ManagerMetadata): Promise<AdapterEnvelope> {
     return {config: nextConfig, metadata};
   }
 }

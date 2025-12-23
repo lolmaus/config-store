@@ -5,7 +5,7 @@ export {ConfigManager} from './manager.js';
 export type {
   ManagerStatus,
   ManagerState,
-  Meta,
+  ManagerMetadata,
   AdapterEnvelope,
   VersionDef,
   InferConfig,

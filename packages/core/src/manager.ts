@@ -4,7 +4,7 @@ import {
   type AdapterEnvelope,
   type ManagerState,
   type ManagerStatus,
-  type Meta,
+  type ManagerMetadata,
   type VersionDef,
 } from './types.js';
 import {createStore, type StoreApi} from 'zustand/vanilla';
@@ -87,7 +87,7 @@ export class ConfigManager<TCurrent = undefined> {
     return this.state.error;
   }
 
-  get metadata(): Meta {
+  get metadata(): ManagerMetadata {
     return this.state.metadata;
   }
 
@@ -389,7 +389,7 @@ export class ConfigManager<TCurrent = undefined> {
     }));
   }
 
-  protected setMetadata(metadata: Meta) {
+  protected setMetadata(metadata: ManagerMetadata) {
     if (!this.stateStore) {
       throw new Error('[@config-store] Attempted to set metadata before adding a version');
     }

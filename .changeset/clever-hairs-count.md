@@ -13,7 +13,7 @@ Improve error handling and retries when loading.
         - `manager.state` — current state, typed as `ManagerState`;
         - `manager.status` — shortcut for `manager.state.status`, typed as `ManagerStatus`;
         - `manager.error` — shortcut for `manager.state.error`, typed as `unknown`;
-        - `manager.metadata` — shortcut for `manager.state.metadata`, typed as `Meta`;
+        - `manager.metadata` — shortcut for `manager.state.metadata`, typed as `ManagerMetadata`;
         - `manager.dataVersion` — shortcut for `manager.state.metadata.dataVersion`, typed as `number`;
         - `manager.schemaVersion` — shortcut for `manager.state.metadata.schemaVersion`, typed as `number`;
         - `manager.isInitial`, typed as `boolean`;

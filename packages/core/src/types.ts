@@ -13,7 +13,7 @@ export interface ManagerState {
   readonly status: ManagerStatus;
   readonly error: unknown | null;
   readonly hasBeenHydrated: boolean;
-  readonly metadata: Meta;
+  readonly metadata: ManagerMetadata;
 }
 
 /**
@@ -27,7 +27,7 @@ export const MetadataSchema = z.object({
 /**
  * The Strict Contract for adapter read
  */
-export type Meta = z.infer<typeof MetadataSchema>;
+export type ManagerMetadata = z.infer<typeof MetadataSchema>;
 
 export const AdapterEnvelopeSchema = z.object({
   config: z.unknown(),
