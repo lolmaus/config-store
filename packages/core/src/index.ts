@@ -2,7 +2,15 @@
 export {ConfigManager} from './manager.js';
 
 // Types
-export type {Meta, AdapterEnvelope, VersionDef, InferConfig} from './types.js';
+export type {
+  ManagerStatus,
+  ManagerState,
+  Meta,
+  AdapterEnvelope,
+  VersionDef,
+  InferConfig,
+} from './types.js';
+export {MetadataSchema, AdapterEnvelopeSchema} from './types.js';
 
 // Adapters
 export {BaseAdapter} from './adapters/base.js';
@@ -16,6 +24,8 @@ export {LocalStorageAdapter, type LocalStorageAdapterOptions} from './adapters/l
 
 // Errors
 export {
+  BaseError,
   ConfigConflictError,
-  ConfigSchemaOutdatedError as ConfigSchemaOutdatedError,
+  ConfigSchemaOutdatedError,
+  AdapterPayloadError,
 } from './errors.js';
