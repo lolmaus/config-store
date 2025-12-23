@@ -36,7 +36,7 @@ A strict, schema-first config manager designed for long-lived frontend apps. It 
     - [3.2 Handling Concurrency (Race Conditions)](#32-handling-concurrency-race-conditions)
       - [3.2.1 concurrency: abort — default](#321-concurrency-abort--default)
       - [3.2.2 concurrency: optimistic — ideal solution, requires backend logic](#322-concurrency-optimistic--ideal-solution-requires-backend-logic)
-      - [3.2.3 concurrency: queue — legacy Fallback](#323-concurrency-queue--legacy-fallback)
+      - [3.2.3 concurrency: sequential — legacy Fallback](#323-concurrency-sequential--legacy-fallback)
     - [3.3 Handling Backend Responses on save](#33-handling-backend-responses-on-save)
     - [3.4 Handle loading and error states in the UI](#34-handle-loading-and-error-states-in-the-ui)
   - [4. FAQ](#4-faq)
@@ -409,7 +409,7 @@ The adapter stores metadata separately from the config, allowing you to implemen
 
 ⠀
 
-#### 3.2.3 concurrency: queue — legacy Fallback
+#### 3.2.3 concurrency: sequential — legacy Fallback
 
 **Best for:** Legacy backends that do not support HTTP request cancellation and do not handle versioning.
 

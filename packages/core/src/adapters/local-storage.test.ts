@@ -3,6 +3,8 @@ import {describe, it, mock, beforeEach, after, type Mock} from 'node:test';
 import assert from 'node:assert/strict';
 import {LocalStorageAdapter} from './local-storage.js';
 import type {Meta} from '../types.js';
+import {AdapterPayloadError} from '../errors.js';
+import {ZodError} from 'zod';
 
 interface TestConfig {
   theme: 'light' | 'dark';
@@ -70,39 +72,69 @@ describe('LocalStorageAdapter', () => {
       );
     });
 
-    it('returns undefined if JSON parsing fails', async () => {
+    it('Should throw SyntaxError on invalid JSON', () => {
       // Mock console.warn to keep test output clean
-      const warnMock = mock.method(console, 'warn', () => {});
+      const readMock = mock.method(adapter, 'onReadError', () => {});
 
-      getItemMock.mock.mockImplementation(() => '{ invalid json }');
+      getItemMock.mock.mockImplementation(() => 'wtf');
 
-      const result = await adapter.read();
+      m = 'Read error';
+      assert.throws(
+        () => adapter.read(),
+        (e) => {
+          m = 'thrown error instanceof AdapterPayloadError';
+          assert.ok(e instanceof AdapterPayloadError, m);
 
-      m = 'Should gracefully handle parse errors';
-      assert.deepStrictEqual(result, undefined, m);
+          m = 'thrown error.parseError instanceof SyntaxError';
+          assert.ok(e.parseError instanceof SyntaxError, m);
 
-      m = 'Should log a warning to the console';
-      assert.strictEqual(warnMock.mock.callCount(), 1, m);
+          return true;
+        },
+        m
+      );
 
-      const args = warnMock.mock.calls[0]?.arguments;
-      // Use regex to verify the error message content safely
-      if (args && typeof args[0] === 'string') {
-        assert.match(args[0], /Failed to parse/, 'Should mention parsing failure');
-      } else {
-        assert.fail('console.warn was called without a string message');
-      }
+      m = 'onReadError error instanceof AdapterPayloadError';
+      assert.ok(readMock.mock.calls[0]?.arguments[0] instanceof AdapterPayloadError, m);
 
-      // Restore console.warn specifically for this test
-      warnMock.mock.restore();
+      m = 'onReadError error.parseError instanceof SyntaxError';
+      assert.ok(readMock.mock.calls[0]?.arguments[0].parseError instanceof SyntaxError, m);
+    });
+
+    it('Should throw ValidationError on schema mismatch', () => {
+      // Mock console.warn to keep test output clean
+      const readMock = mock.method(adapter, 'onReadError', () => {});
+
+      getItemMock.mock.mockImplementation(() => '{"theme": "main"}');
+
+      m = 'Read error';
+      assert.throws(
+        () => adapter.read(),
+        (e) => {
+          m = 'thrown error instanceof AdapterPayloadError';
+          assert.ok(e instanceof AdapterPayloadError, m);
+
+          m = 'thrown error.parseError instanceof ZodError';
+          assert.ok(e.parseError instanceof ZodError, m);
+
+          return true;
+        },
+        m
+      );
+
+      m = 'onReadError error instanceof AdapterPayloadError';
+      assert.ok(readMock.mock.calls[0]?.arguments[0] instanceof AdapterPayloadError, m);
+
+      m = 'onReadError error.parseError instanceof ZodError';
+      assert.ok(readMock.mock.calls[0]?.arguments[0].parseError instanceof ZodError, m);
     });
   });
 
   describe('write()', () => {
-    it('wraps settings and metadata in an envelope before saving', async () => {
+    it('wraps settings and metadata in an envelope before saving', () => {
       const config: TestConfig = {theme: 'dark'};
       const metadata: Meta = {dataVersion: 2, schemaVersion: 1};
 
-      await adapter.write(config, metadata);
+      adapter.write(config, metadata);
 
       m = 'setItem should be called once';
       assert.strictEqual(setItemMock.mock.callCount(), 1, m);

@@ -15,4 +15,7 @@ export {
 export {LocalStorageAdapter, type LocalStorageAdapterOptions} from './adapters/local-storage.js';
 
 // Errors
-export {ConfigConflictError, ConfigSchemaOutdatedError as ClientOutdatedError} from './errors.js';
+export {
+  ConfigConflictError,
+  ConfigSchemaOutdatedError as ConfigSchemaOutdatedError,
+} from './errors.js';

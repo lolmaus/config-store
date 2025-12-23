@@ -27,3 +27,4 @@ Improve error handling and retries when loading.
 
 - `LocalStorageAdapter`
     - No longer swallows the error, allowing the manager to handle failures.
+    - Improve error handling.

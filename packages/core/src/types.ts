@@ -1,4 +1,4 @@
-import {ZodType} from 'zod';
+import z, {ZodType} from 'zod';
 import type {ConfigManager} from './manager.js';
 
 /**
@@ -19,18 +19,22 @@ export interface ManagerState {
 /**
  * Base type for metadata
  */
-export interface Meta {
-  readonly dataVersion: number;
-  readonly schemaVersion: number;
-}
+export const MetadataSchema = z.object({
+  dataVersion: z.number(),
+  schemaVersion: z.number(),
+});
 
 /**
  * The Strict Contract for adapter read
  */
-export interface AdapterEnvelope {
-  config: unknown;
-  metadata: Meta;
-}
+export type Meta = z.infer<typeof MetadataSchema>;
+
+export const AdapterEnvelopeSchema = z.object({
+  config: z.unknown(),
+  metadata: MetadataSchema,
+});
+
+export type AdapterEnvelope = z.infer<typeof AdapterEnvelopeSchema>;
 
 /**
  * Descriptor of a schema version

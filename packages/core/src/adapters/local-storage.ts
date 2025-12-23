@@ -1,5 +1,6 @@
 import {BaseAdapter} from './base.js';
-import type {AdapterEnvelope, Meta} from '../types.js';
+import {AdapterEnvelopeSchema, type AdapterEnvelope, type Meta} from '../types.js';
+import {AdapterPayloadError} from '../errors.js';
 
 export interface LocalStorageAdapterOptions {
   key: string;
@@ -18,15 +19,19 @@ export class LocalStorageAdapter extends BaseAdapter {
   read(): AdapterEnvelope | void {
     if (typeof localStorage === 'undefined') return;
 
-    const raw: string | null = localStorage.getItem(this.options.key);
+    const rawStrOrNull: string | null = localStorage.getItem(this.options.key);
 
-    if (raw === null) return;
+    if (rawStrOrNull === null) return;
+
+    let rawJuson;
 
     try {
-      return JSON.parse(raw);
-    } catch (e) {
-      console.warn('[ConfigManager] Failed to parse LocalStorage value', e);
-      return;
+      rawJuson = JSON.parse(rawStrOrNull);
+      return AdapterEnvelopeSchema.parse(rawJuson);
+    } catch (error) {
+      const error2 = new AdapterPayloadError(error);
+      this.onReadError(error2);
+      throw error2;
     }
   }
 
