@@ -1,5 +1,4 @@
-// 1. MUST BE THE FIRST IMPORT
-import {teardown} from './test-setup.js';
+import {teardown} from './test-setup.js'; // Must be the first import
 
 import {describe, it, mock, beforeEach, afterEach, after} from 'node:test';
 import assert from 'node:assert/strict';

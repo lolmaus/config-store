@@ -24,3 +24,6 @@ Improve error handling and retries when loading.
 
 - `AsyncAdapter`:
     - Added `onReadError` to `AsyncAdapterOptions`.
+
+- `LocalStorageAdapter`
+    - No longer swallows the error, allowing the manager to handle failures.

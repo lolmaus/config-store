@@ -35,6 +35,7 @@
   "devDependencies": {
     "@config-store/eslint-config": "workspace:*",
     "@config-store/typescript-config": "workspace:*",
+    "@happy-dom/global-registrator": "^20.0.11",
     "@types/node": "^22.15.3",
     "eslint": "^9.39.1",
     "happy-dom": "^20.0.11",

@@ -42,7 +42,7 @@ export class LocalStorageAdapter extends BaseAdapter {
       localStorage.setItem(this.options.key, JSON.stringify(payload));
     } catch (e) {
       this.onWriteError(e);
-      return;
+      throw e;
     }
 
     return {config: nextConfig, metadata};

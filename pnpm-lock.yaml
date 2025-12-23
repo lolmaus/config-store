@@ -101,6 +101,9 @@ importers:
       '@config-store/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+      '@happy-dom/global-registrator':
+        specifier: ^20.0.11
+        version: 20.0.11
       '@types/node':
         specifier: ^22.15.3
         version: 22.15.3
