@@ -25,6 +25,7 @@ Improve error handling and retries when loading.
     - Fix: correctly set success and hasBeenHydrated state on recovery after ConfigConflictError.
     - Migrate to a single Zustand store, merging configStore and stateStore into one.
     - Make `ConfigManager.create()` require initial version as second argument.
+    - Rename `ManagerState` proper `status`, `error`, `isInitial`, `isLoading`, `isSuccess` and `isError` to have a `load` prefix.
 
 - `AsyncAdapter`:
     - Added `onReadError` to `AsyncAdapterOptions`.

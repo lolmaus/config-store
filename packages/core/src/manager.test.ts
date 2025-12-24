@@ -41,13 +41,14 @@ describe('ConfigManager', () => {
       assert.partialDeepStrictEqual(
         manager.state,
         {
-          status: 'initial',
-          error: null,
-          hasBeenHydrated: false,
           metadata: {
             dataVersion: 0,
             schemaVersion: 1,
           },
+          hasBeenHydrated: false,
+
+          loadStatus: 'initial',
+          loadError: null,
         },
         m
       );
@@ -58,13 +59,14 @@ describe('ConfigManager', () => {
       assert.partialDeepStrictEqual(
         manager.state,
         {
-          status: 'loading',
-          error: null,
-          hasBeenHydrated: false,
           metadata: {
             dataVersion: 0,
             schemaVersion: 1,
           },
+          hasBeenHydrated: false,
+
+          loadStatus: 'loading',
+          loadError: null,
         },
         m
       );
@@ -85,13 +87,13 @@ describe('ConfigManager', () => {
       assert.partialDeepStrictEqual(
         manager.state,
         {
-          status: 'success',
-          error: null,
-          hasBeenHydrated: true,
           metadata: {
             dataVersion: 0,
             schemaVersion: 1,
           },
+          hasBeenHydrated: true,
+          loadStatus: 'success',
+          loadError: null,
         },
         m
       );
@@ -298,17 +300,17 @@ describe('ConfigManager', () => {
           config: {
             theme: 'dark',
           },
-          error: null,
+          loadError: null,
           hasBeenHydrated: true,
           metadata: {
             dataVersion: 1,
             schemaVersion: 1,
           },
-          status: 'success',
-          isError: false,
-          isInitial: false,
-          isLoading: false,
-          isSuccess: true,
+          loadStatus: 'success',
+          isLoadError: false,
+          isLoadInitial: false,
+          isLoadLoading: false,
+          isLoadSuccess: true,
         },
         m
       );
@@ -336,17 +338,17 @@ describe('ConfigManager', () => {
           config: {
             theme: 'dark',
           },
-          error: null,
+          loadError: null,
           hasBeenHydrated: true,
           metadata: {
             dataVersion: 1,
             schemaVersion: 1,
           },
-          status: 'success',
-          isError: false,
-          isInitial: false,
-          isLoading: false,
-          isSuccess: true,
+          loadStatus: 'success',
+          isLoadError: false,
+          isLoadInitial: false,
+          isLoadLoading: false,
+          isLoadSuccess: true,
         },
         m
       );
@@ -431,12 +433,12 @@ describe('ConfigManager', () => {
         Object.defineProperty(manager, 'store', {
           value: createStore<ManagerState<undefined>>(() => ({
             config: undefined,
-            status: 'initial',
-            isError: false,
-            isInitial: true,
-            isLoading: false,
-            isSuccess: false,
-            error: null,
+            loadStatus: 'initial',
+            isLoadError: false,
+            isLoadInitial: true,
+            isLoadLoading: false,
+            isLoadSuccess: false,
+            loadError: null,
             hasBeenHydrated: false,
             metadata: {
               dataVersion: 123,
@@ -450,12 +452,12 @@ describe('ConfigManager', () => {
           manager.state,
           {
             config: undefined,
-            status: 'initial',
-            isError: false,
-            isInitial: true,
-            isLoading: false,
-            isSuccess: false,
-            error: null,
+            loadStatus: 'initial',
+            isLoadError: false,
+            isLoadInitial: true,
+            isLoadLoading: false,
+            isLoadSuccess: false,
+            loadError: null,
             hasBeenHydrated: false,
             metadata: {
               dataVersion: 123,
@@ -465,11 +467,11 @@ describe('ConfigManager', () => {
           m
         );
 
-        m = 'manager.status';
-        assert.equal(manager.status, 'initial', m);
+        m = 'manager.loadStatus';
+        assert.equal(manager.loadStatus, 'initial', m);
 
-        m = 'manager.error';
-        assert.equal(manager.error, null, m);
+        m = 'manager.loadError';
+        assert.equal(manager.loadError, null, m);
 
         m = 'manager.metadata';
         assert.deepEqual(
@@ -487,17 +489,17 @@ describe('ConfigManager', () => {
         m = 'manager.schemaVersion';
         assert.equal(manager.schemaVersion, 321, m);
 
-        m = 'manager.isInitial';
-        assert.equal(manager.isInitial, true, m);
+        m = 'manager.isLoadInitial';
+        assert.equal(manager.isLoadInitial, true, m);
 
-        m = 'manager.isLoading';
-        assert.equal(manager.isLoading, false, m);
+        m = 'manager.isLoadLoading';
+        assert.equal(manager.isLoadLoading, false, m);
 
-        m = 'manager.isSuccess';
-        assert.equal(manager.isSuccess, false, m);
+        m = 'manager.isLoadSuccess';
+        assert.equal(manager.isLoadSuccess, false, m);
 
-        m = 'manager.isError';
-        assert.equal(manager.isError, false, m);
+        m = 'manager.isLoadError';
+        assert.equal(manager.isLoadError, false, m);
 
         m = 'manager.hasBeenHydrated';
         assert.equal(manager.hasBeenHydrated, false, m);
@@ -512,12 +514,12 @@ describe('ConfigManager', () => {
         Object.defineProperty(manager, 'store', {
           value: createStore<ManagerState<undefined>>(() => ({
             config: undefined,
-            status: 'loading',
-            isError: false,
-            isInitial: false,
-            isLoading: true,
-            isSuccess: false,
-            error: null,
+            loadStatus: 'loading',
+            isLoadError: false,
+            isLoadInitial: false,
+            isLoadLoading: true,
+            isLoadSuccess: false,
+            loadError: null,
             hasBeenHydrated: false,
             metadata: {
               dataVersion: 123,
@@ -531,12 +533,12 @@ describe('ConfigManager', () => {
           manager.state,
           {
             config: undefined,
-            status: 'loading',
-            isError: false,
-            isInitial: false,
-            isLoading: true,
-            isSuccess: false,
-            error: null,
+            loadStatus: 'loading',
+            isLoadError: false,
+            isLoadInitial: false,
+            isLoadLoading: true,
+            isLoadSuccess: false,
+            loadError: null,
             hasBeenHydrated: false,
             metadata: {
               dataVersion: 123,
@@ -546,11 +548,11 @@ describe('ConfigManager', () => {
           m
         );
 
-        m = 'manager.status';
-        assert.equal(manager.status, 'loading', m);
+        m = 'manager.loadStatus';
+        assert.equal(manager.loadStatus, 'loading', m);
 
-        m = 'manager.error';
-        assert.equal(manager.error, null, m);
+        m = 'manager.loadError';
+        assert.equal(manager.loadError, null, m);
 
         m = 'manager.metadata';
         assert.deepEqual(
@@ -568,17 +570,17 @@ describe('ConfigManager', () => {
         m = 'manager.schemaVersion';
         assert.equal(manager.schemaVersion, 321, m);
 
-        m = 'manager.isInitial';
-        assert.equal(manager.isInitial, false, m);
+        m = 'manager.isLoadInitial';
+        assert.equal(manager.isLoadInitial, false, m);
 
-        m = 'manager.isLoading';
-        assert.equal(manager.isLoading, true, m);
+        m = 'manager.isLoadLoading';
+        assert.equal(manager.isLoadLoading, true, m);
 
-        m = 'manager.isSuccess';
-        assert.equal(manager.isSuccess, false, m);
+        m = 'manager.isLoadSuccess';
+        assert.equal(manager.isLoadSuccess, false, m);
 
-        m = 'manager.isError';
-        assert.equal(manager.isError, false, m);
+        m = 'manager.isLoadError';
+        assert.equal(manager.isLoadError, false, m);
 
         m = 'manager.hasBeenHydrated';
         assert.equal(manager.hasBeenHydrated, false, m);
@@ -593,12 +595,12 @@ describe('ConfigManager', () => {
         Object.defineProperty(manager, 'store', {
           value: createStore<ManagerState<undefined>>(() => ({
             config: undefined,
-            status: 'success',
-            isError: false,
-            isInitial: false,
-            isLoading: false,
-            isSuccess: true,
-            error: null,
+            loadStatus: 'success',
+            isLoadError: false,
+            isLoadInitial: false,
+            isLoadLoading: false,
+            isLoadSuccess: true,
+            loadError: null,
             hasBeenHydrated: true,
             metadata: {
               dataVersion: 123,
@@ -612,12 +614,12 @@ describe('ConfigManager', () => {
           manager.state,
           {
             config: undefined,
-            status: 'success',
-            isError: false,
-            isInitial: false,
-            isLoading: false,
-            isSuccess: true,
-            error: null,
+            loadStatus: 'success',
+            isLoadError: false,
+            isLoadInitial: false,
+            isLoadLoading: false,
+            isLoadSuccess: true,
+            loadError: null,
             hasBeenHydrated: true,
             metadata: {
               dataVersion: 123,
@@ -627,11 +629,11 @@ describe('ConfigManager', () => {
           m
         );
 
-        m = 'manager.status';
-        assert.equal(manager.status, 'success', m);
+        m = 'manager.loadStatus';
+        assert.equal(manager.loadStatus, 'success', m);
 
-        m = 'manager.error';
-        assert.equal(manager.error, null, m);
+        m = 'manager.loadError';
+        assert.equal(manager.loadError, null, m);
 
         m = 'manager.metadata';
         assert.deepEqual(
@@ -649,17 +651,17 @@ describe('ConfigManager', () => {
         m = 'manager.schemaVersion';
         assert.equal(manager.schemaVersion, 321, m);
 
-        m = 'manager.isInitial';
-        assert.equal(manager.isInitial, false, m);
+        m = 'manager.isLoadInitial';
+        assert.equal(manager.isLoadInitial, false, m);
 
-        m = 'manager.isLoading';
-        assert.equal(manager.isLoading, false, m);
+        m = 'manager.isLoadLoading';
+        assert.equal(manager.isLoadLoading, false, m);
 
-        m = 'manager.isSuccess';
-        assert.equal(manager.isSuccess, true, m);
+        m = 'manager.isLoadSuccess';
+        assert.equal(manager.isLoadSuccess, true, m);
 
-        m = 'manager.isError';
-        assert.equal(manager.isError, false, m);
+        m = 'manager.isLoadError';
+        assert.equal(manager.isLoadError, false, m);
 
         m = 'manager.hasBeenHydrated';
         assert.equal(manager.hasBeenHydrated, true, m);
@@ -674,12 +676,12 @@ describe('ConfigManager', () => {
         Object.defineProperty(manager, 'store', {
           value: createStore<ManagerState<undefined>>(() => ({
             config: undefined,
-            status: 'error',
-            isError: true,
-            isInitial: false,
-            isLoading: false,
-            isSuccess: false,
-            error: "I'm afraid I can't do that, Dave.",
+            loadStatus: 'error',
+            isLoadError: true,
+            isLoadInitial: false,
+            isLoadLoading: false,
+            isLoadSuccess: false,
+            loadError: "I'm afraid I can't do that, Dave.",
             hasBeenHydrated: true,
             metadata: {
               dataVersion: 123,
@@ -693,12 +695,12 @@ describe('ConfigManager', () => {
           manager.state,
           {
             config: undefined,
-            status: 'error',
-            isError: true,
-            isInitial: false,
-            isLoading: false,
-            isSuccess: false,
-            error: "I'm afraid I can't do that, Dave.",
+            loadStatus: 'error',
+            isLoadError: true,
+            isLoadInitial: false,
+            isLoadLoading: false,
+            isLoadSuccess: false,
+            loadError: "I'm afraid I can't do that, Dave.",
             hasBeenHydrated: true,
             metadata: {
               dataVersion: 123,
@@ -708,11 +710,11 @@ describe('ConfigManager', () => {
           m
         );
 
-        m = 'manager.status';
-        assert.equal(manager.status, 'error', m);
+        m = 'manager.loadStatus';
+        assert.equal(manager.loadStatus, 'error', m);
 
-        m = 'manager.error';
-        assert.equal(manager.error, "I'm afraid I can't do that, Dave.", m);
+        m = 'manager.loadError';
+        assert.equal(manager.loadError, "I'm afraid I can't do that, Dave.", m);
 
         m = 'manager.metadata';
         assert.deepEqual(
@@ -730,17 +732,17 @@ describe('ConfigManager', () => {
         m = 'manager.schemaVersion';
         assert.equal(manager.schemaVersion, 321, m);
 
-        m = 'manager.isInitial';
-        assert.equal(manager.isInitial, false, m);
+        m = 'manager.isLoadInitial';
+        assert.equal(manager.isLoadInitial, false, m);
 
-        m = 'manager.isLoading';
-        assert.equal(manager.isLoading, false, m);
+        m = 'manager.isLoadLoading';
+        assert.equal(manager.isLoadLoading, false, m);
 
-        m = 'manager.isSuccess';
-        assert.equal(manager.isSuccess, false, m);
+        m = 'manager.isLoadSuccess';
+        assert.equal(manager.isLoadSuccess, false, m);
 
-        m = 'manager.isError';
-        assert.equal(manager.isError, true, m);
+        m = 'manager.isLoadError';
+        assert.equal(manager.isLoadError, true, m);
 
         m = 'manager.hasBeenHydrated';
         assert.equal(manager.hasBeenHydrated, true, m);

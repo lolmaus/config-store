@@ -3,7 +3,7 @@ import type {BaseAdapter} from './adapters/base.js';
 import {
   type AdapterEnvelope,
   type ManagerState,
-  type ManagerStatus,
+  type ManagerLoadStatus,
   type ManagerMetadata,
   type VersionDef,
 } from './types.js';
@@ -44,14 +44,16 @@ export class ConfigManager<TCurrent = undefined> {
 
     this.store = createStore<ManagerState<TCurrent>>(() => ({
       config,
-      status: 'initial',
-      error: null,
-      hasBeenHydrated: false,
       metadata,
-      isInitial: true,
-      isLoading: false,
-      isSuccess: false,
-      isError: false,
+      hasBeenHydrated: false,
+
+      // Load state
+      loadStatus: 'initial',
+      loadError: null,
+      isLoadInitial: true,
+      isLoadLoading: false,
+      isLoadSuccess: false,
+      isLoadError: false,
     }));
   }
 
@@ -86,14 +88,6 @@ export class ConfigManager<TCurrent = undefined> {
     return this.state.config;
   }
 
-  get status(): ManagerStatus {
-    return this.state.status;
-  }
-
-  get error(): unknown {
-    return this.state.error;
-  }
-
   get metadata(): ManagerMetadata {
     return this.state.metadata;
   }
@@ -106,24 +100,32 @@ export class ConfigManager<TCurrent = undefined> {
     return this.metadata.schemaVersion;
   }
 
-  get isInitial(): boolean {
-    return this.state.isInitial;
-  }
-
-  get isLoading(): boolean {
-    return this.state.isLoading;
-  }
-
-  get isSuccess(): boolean {
-    return this.state.isSuccess;
-  }
-
-  get isError(): boolean {
-    return this.state.isError;
-  }
-
   get hasBeenHydrated(): boolean {
     return this.state.hasBeenHydrated;
+  }
+
+  get loadStatus(): ManagerLoadStatus {
+    return this.state.loadStatus;
+  }
+
+  get loadError(): unknown {
+    return this.state.loadError;
+  }
+
+  get isLoadInitial(): boolean {
+    return this.state.isLoadInitial;
+  }
+
+  get isLoadLoading(): boolean {
+    return this.state.isLoadLoading;
+  }
+
+  get isLoadSuccess(): boolean {
+    return this.state.isLoadSuccess;
+  }
+
+  get isLoadError(): boolean {
+    return this.state.isLoadError;
   }
 
   // ------------------------
@@ -358,12 +360,12 @@ export class ConfigManager<TCurrent = undefined> {
 
     this.store.setState((state) => ({
       ...state,
-      status: 'loading',
-      isInitial: false,
-      isLoading: true,
-      isSuccess: false,
-      isError: false,
-      error: null,
+      loadStatus: 'loading',
+      isLoadInitial: false,
+      isLoadLoading: true,
+      isLoadSuccess: false,
+      isLoadError: false,
+      loadError: null,
     }));
   }
 
@@ -374,12 +376,12 @@ export class ConfigManager<TCurrent = undefined> {
 
     this.store.setState((state) => ({
       ...state,
-      status: 'success',
-      isInitial: false,
-      isLoading: false,
-      isSuccess: true,
-      isError: false,
-      error: null,
+      loadStatus: 'success',
+      isLoadInitial: false,
+      isLoadLoading: false,
+      isLoadSuccess: true,
+      isLoadError: false,
+      loadError: null,
       hasBeenHydrated: true,
     }));
   }
@@ -391,12 +393,12 @@ export class ConfigManager<TCurrent = undefined> {
 
     this.store.setState((state) => ({
       ...state,
-      status: 'error',
-      isInitial: false,
-      isLoading: false,
-      isSuccess: false,
-      isError: true,
-      error,
+      loadStatus: 'error',
+      isLoadInitial: false,
+      isLoadLoading: false,
+      isLoadSuccess: false,
+      isLoadError: true,
+      loadError: error,
     }));
   }
 

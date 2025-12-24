@@ -98,8 +98,8 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
       assert.partialDeepStrictEqual(
         manager.state,
         {
-          status: 'initial',
-          error: null,
+          loadStatus: 'initial',
+          loadError: null,
           hasBeenHydrated: false,
           metadata: {
             dataVersion: 0,
@@ -118,8 +118,8 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
       assert.partialDeepStrictEqual(
         manager.state,
         {
-          status: 'loading',
-          error: null,
+          loadStatus: 'loading',
+          loadError: null,
           hasBeenHydrated: false,
           metadata: {
             dataVersion: 0,
@@ -139,8 +139,8 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
       assert.partialDeepStrictEqual(
         manager.state,
         {
-          status: 'error',
-          error: 'Network Down',
+          loadStatus: 'error',
+          loadError: 'Network Down',
           hasBeenHydrated: false,
           metadata: {
             dataVersion: 0,
@@ -175,8 +175,8 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
       assert.partialDeepStrictEqual(
         manager.state,
         {
-          status: 'success',
-          error: null,
+          loadStatus: 'success',
+          loadError: null,
           hasBeenHydrated: true,
           metadata: {
             dataVersion: 123,
@@ -195,8 +195,8 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
       assert.partialDeepStrictEqual(
         manager.state,
         {
-          status: 'loading',
-          error: null,
+          loadStatus: 'loading',
+          loadError: null,
           hasBeenHydrated: true,
           metadata: {
             dataVersion: 123,
@@ -216,8 +216,8 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
       assert.partialDeepStrictEqual(
         manager.state,
         {
-          status: 'error',
-          error: 'Network Down',
+          loadStatus: 'error',
+          loadError: 'Network Down',
           hasBeenHydrated: true,
           metadata: {
             dataVersion: 123,
@@ -327,7 +327,7 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
       await loadPromise;
 
       m = 'Manager should be in error state initially';
-      assert.strictEqual(localManager.state.status, 'error', m);
+      assert.strictEqual(localManager.state.loadStatus, 'error', m);
       // This will now PASS because we bypassed the beforeEach
       assert.strictEqual(localManager.state.hasBeenHydrated, false, m);
 
@@ -355,7 +355,7 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
       assert.strictEqual(localManager.config.theme, 'blue', m);
 
       m = 'Status should be updated to success after successful healing';
-      assert.strictEqual(localManager.state.status, 'success', m);
+      assert.strictEqual(localManager.state.loadStatus, 'success', m);
 
       m = 'Manager should be hydrated after processing conflict payload';
       assert.strictEqual(localManager.state.hasBeenHydrated, true, m);
