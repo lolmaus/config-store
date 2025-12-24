@@ -50,15 +50,22 @@ export class ConfigSchemaOutdatedError extends BaseError {
   }
 }
 
-/**
- * Error class to handle confilcts
- */
+export class ConfigSchemaParseError extends BaseError {
+  public readonly parseError: unknown;
+
+  constructor(error: unknown) {
+    super(
+      'Failed to revert to defaults. Schema must be defined with `.optional()`, `.nullable()`, `.nullish()` or `.prefault({})` on the outer object and `.default()` on every property.'
+    );
+    this.parseError = error;
+  }
+}
+
 export class AdapterPayloadError extends BaseError {
   public readonly parseError: unknown;
 
   constructor(error: unknown) {
-    super('Adapter payload failed parse');
+    super('Adapter payload failed to parse');
     this.parseError = error;
-    // Name is automatically 'ConfigConflictError' via BaseError
   }
 }

@@ -9,11 +9,18 @@ export type ManagerStatus = 'initial' | 'loading' | 'success' | 'error';
 /**
  * Shape of the state object, exposed as a Zustand store for reactivity
  */
-export interface ManagerState {
+export interface ManagerState<TConfig> {
+  readonly config: TConfig | undefined;
   readonly status: ManagerStatus;
   readonly error: unknown | null;
   readonly hasBeenHydrated: boolean;
   readonly metadata: ManagerMetadata;
+
+  // Derived state
+  isInitial: boolean;
+  isLoading: boolean;
+  isSuccess: boolean;
+  isError: boolean;
 }
 
 /**

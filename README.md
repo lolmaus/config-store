@@ -19,37 +19,37 @@ A strict, schema-first config manager designed for long-lived frontend apps. It 
 ⠀
 
 - [@config-store](#config-store)
-    - [0. Roadmap](#0-roadmap)
-    - [1. Installation](#1-installation)
-    - [1.1. General installation](#11-general-installation)
-    - [1.2. Use with React](#12-use-with-react)
-    - [1.3 Use with other frameworks](#13-use-with-other-frameworks)
-    - [1.4. Version compatibility](#14-version-compatibility)
-    - [2. Quickstart](#2-quickstart)
-        - [2.1. Define the manager](#21-define-the-manager)
-        - [2.2. Generate typed hooks](#22-generate-typed-hooks)
-        - [2.3. Wrap your app with the config provider](#23-wrap-your-app-with-the-config-provider)
-        - [2.4. Read config](#24-read-config)
-        - [2.5. Persist config updates](#25-persist-config-updates)
-    - [3. Defining a custom adapter](#3-defining-a-custom-adapter)
-        - [3.1 The AsyncAdapter Helper](#31-the-asyncadapter-helper)
-        - [3.2 Handling Concurrency (Race Conditions)](#32-handling-concurrency-race-conditions)
-            - [3.2.1 concurrency: abort — default](#321-concurrency-abort--default)
-            - [3.2.2 concurrency: optimistic — ideal solution, requires backend logic](#322-concurrency-optimistic--ideal-solution-requires-backend-logic)
-            - [3.2.3 concurrency: sequential — legacy Fallback](#323-concurrency-sequential--legacy-fallback)
-        - [3.3 Handling Backend Responses on save](#33-handling-backend-responses-on-save)
-        - [3.4 Handle loading and error states in the UI](#34-handle-loading-and-error-states-in-the-ui)
-    - [4. FAQ](#4-faq)
-        - [4.1 Should I use TanStack Query in the adapter?](#41-should-i-use-tanstack-query-in-the-adapter)
-        - [4.2 Why does the library depend on Zustand?](#42-why-does-the-library-depend-on-zustand)
-        - [4.3 What's the hassle with migrations?](#43-whats-the-hassle-with-migrations)
-        - [4.4 What happens if I omit a migration?](#44-what-happens-if-i-omit-a-migration)
-        - [4.5 How do I reset a setting to its default value?](#45-how-do-i-reset-a-setting-to-its-default-value)
-    - [5. Development](#5-development)
-        - [5.1 Setup](#51-setup)
-        - [5.2 Running Tests](#52-running-tests)
-        - [5.3 Building](#53-building)
-        - [5.4 Versioning and Publishing](#54-versioning-and-publishing)
+  - [0. Roadmap](#0-roadmap)
+  - [1. Installation](#1-installation)
+  - [1.1. General installation](#11-general-installation)
+  - [1.2. Use with React](#12-use-with-react)
+  - [1.3 Use with other frameworks](#13-use-with-other-frameworks)
+  - [1.4. Version compatibility](#14-version-compatibility)
+  - [2. Quickstart](#2-quickstart)
+    - [2.1. Define the manager](#21-define-the-manager)
+    - [2.2. Generate typed hooks](#22-generate-typed-hooks)
+    - [2.3. Wrap your app with the config provider](#23-wrap-your-app-with-the-config-provider)
+    - [2.4. Read config](#24-read-config)
+    - [2.5. Persist config updates](#25-persist-config-updates)
+  - [3. Defining a custom adapter](#3-defining-a-custom-adapter)
+    - [3.1 The AsyncAdapter Helper](#31-the-asyncadapter-helper)
+    - [3.2 Handling Concurrency (Race Conditions)](#32-handling-concurrency-race-conditions)
+      - [3.2.1 concurrency: abort — default](#321-concurrency-abort--default)
+      - [3.2.2 concurrency: optimistic — ideal solution, requires backend logic](#322-concurrency-optimistic--ideal-solution-requires-backend-logic)
+      - [3.2.3 concurrency: sequential — legacy Fallback](#323-concurrency-sequential--legacy-fallback)
+    - [3.3 Handling Backend Responses on save](#33-handling-backend-responses-on-save)
+    - [3.4 Handle loading and error states in the UI](#34-handle-loading-and-error-states-in-the-ui)
+  - [4. FAQ](#4-faq)
+    - [4.1 Should I use TanStack Query in the adapter?](#41-should-i-use-tanstack-query-in-the-adapter)
+    - [4.2 Why does the library depend on Zustand?](#42-why-does-the-library-depend-on-zustand)
+    - [4.3 What's the hassle with migrations?](#43-whats-the-hassle-with-migrations)
+    - [4.4 What happens if I omit a migration?](#44-what-happens-if-i-omit-a-migration)
+    - [4.5 How do I reset a setting to its default value?](#45-how-do-i-reset-a-setting-to-its-default-value)
+  - [5. Development](#5-development)
+    - [5.1 Setup](#51-setup)
+    - [5.2 Running Tests](#52-running-tests)
+    - [5.3 Building](#53-building)
+    - [5.4 Versioning and Publishing](#54-versioning-and-publishing)
 
 ⠀
 
@@ -215,7 +215,7 @@ export const configManager = ConfigManager.create(adapter)
     });
 
 // 2.1.3. Export the current config type
-export type Config = InferConfig<typeof configManager>;
+export type MySettings = InferConfig<typeof configManager>;
 ```
 
 ⠀
@@ -226,9 +226,9 @@ In e. g. `src/settings/hooks.ts`, make versions of hooks `useConfig` and `useUpd
 
 ```ts
 import {createHooks} from '@config-store/react';
-import type {Config} from './manager';
+import type {MySettings} from './manager';
 
-export const {useConfig, useUpdateConfig} = createHooks<Config>();
+export const {useConfig, useUpdateConfig} = createHooks<MySettings>();
 ```
 
 ⠀

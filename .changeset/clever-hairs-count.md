@@ -23,6 +23,7 @@ Improve error handling and retries when loading.
         - `manager.hasBeenHydrated` — shortcut for `manager.state.hasBeenHydrated`, typed as `boolean`;
     - Fix: correctly set success and hasBeenHydrated state on save.
     - Fix: correctly set success and hasBeenHydrated state on recovery after ConfigConflictError.
+    - Migrate to a single Zustand store, merging configStore and stateStore into one.
 
 - `AsyncAdapter`:
     - Added `onReadError` to `AsyncAdapterOptions`.

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {z} from 'zod';
 import {ConfigManager} from './manager.js';
 import {BaseAdapter} from './adapters/base.js';
-import {type AdapterEnvelope, type ManagerState, type ManagerMetadata} from './types.js';
+import {type AdapterEnvelope, type ManagerMetadata} from './types.js';
 import {ConfigSchemaOutdatedError, ConfigConflictError} from './errors.js';
 
 // --- Types for Test ---
@@ -105,7 +105,7 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
             dataVersion: 0,
             schemaVersion: 1,
           },
-        } satisfies ManagerState,
+        },
         m
       );
 
@@ -125,7 +125,7 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
             dataVersion: 0,
             schemaVersion: 1,
           },
-        } satisfies ManagerState,
+        },
         m
       );
 
@@ -146,7 +146,7 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
             dataVersion: 0,
             schemaVersion: 1,
           },
-        } satisfies ManagerState,
+        },
         m
       );
 
@@ -182,7 +182,7 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
             dataVersion: 123,
             schemaVersion: 321,
           },
-        } satisfies ManagerState,
+        },
         m
       );
 
@@ -202,7 +202,7 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
             dataVersion: 123,
             schemaVersion: 321,
           },
-        } satisfies ManagerState,
+        },
         m
       );
 
@@ -223,7 +223,7 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
             dataVersion: 123,
             schemaVersion: 321,
           },
-        } satisfies ManagerState,
+        },
         m
       );
 
@@ -362,7 +362,6 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
     });
 
     it('Conflict Error on STALE request. Ignored.', async () => {
-      console.log('ZOMG ------------ test start ----------');
       m = 'initial manager.config.theme';
       assert.strictEqual(manager.config.theme, 'light', m);
 
