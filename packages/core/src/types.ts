@@ -10,7 +10,7 @@ export type ManagerStatus = 'initial' | 'loading' | 'success' | 'error';
  * Shape of the state object, exposed as a Zustand store for reactivity
  */
 export interface ManagerState<TConfig> {
-  readonly config: TConfig | undefined;
+  readonly config: TConfig;
   readonly status: ManagerStatus;
   readonly error: unknown | null;
   readonly hasBeenHydrated: boolean;
@@ -41,7 +41,9 @@ export const AdapterEnvelopeSchema = z.object({
   metadata: MetadataSchema,
 });
 
-export type AdapterEnvelope = z.infer<typeof AdapterEnvelopeSchema>;
+export type AdapterEnvelope<TCurrent = unknown> = z.infer<typeof AdapterEnvelopeSchema> & {
+  config: TCurrent;
+};
 
 /**
  * Descriptor of a schema version

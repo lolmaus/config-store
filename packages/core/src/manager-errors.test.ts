@@ -83,7 +83,7 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
 
     // We explicitly cast the chain result to the expected generic type
     // to avoid using 'any' or complex inference in the 'let' declaration above.
-    manager = ConfigManager.create(adapter).addVersion({
+    manager = ConfigManager.create(adapter, {
       version: 1,
       schema: themeSchema,
     });
@@ -316,7 +316,7 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
     it('Status Correction: Conflict Resolution should mark manager as Success/Hydrated if it was previously in Error', async () => {
       // 1. Setup: Create a FRESH manager to bypass the 'beforeEach' hydration
       const localAdapter = new ControlledMockAdapter();
-      const localManager = ConfigManager.create(localAdapter).addVersion({
+      const localManager = ConfigManager.create(localAdapter, {
         version: 1,
         schema: themeSchema,
       });

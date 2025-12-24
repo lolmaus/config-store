@@ -17,50 +17,53 @@ export class ConfigManager<TCurrent = undefined> {
 
   protected adapter: BaseAdapter;
   protected versions: VersionDef<any, any>[]; // eslint-disable-line @typescript-eslint/no-explicit-any
-  protected schema: z.ZodType<TCurrent> | undefined;
-  public store: StoreApi<ManagerState<TCurrent>> | undefined;
+  protected schema: z.ZodType<TCurrent>;
+  public store: StoreApi<ManagerState<TCurrent>>;
 
   // ------------------------
   // Constructor
   // ------------------------
 
-  protected constructor(
-    adapter: BaseAdapter,
-    versions: VersionDef<any, any>[] = [], // eslint-disable-line @typescript-eslint/no-explicit-any
-    schema: z.ZodType<TCurrent> | undefined
-  ) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  protected constructor(adapter: BaseAdapter, versions: VersionDef<any, any>[] = []) {
+    const currentVersion = versions.at(-1) as VersionDef<unknown, TCurrent>;
+
+    if (!currentVersion)
+      throw new Error('[@config-store] Initialized the ConfigManager without versions');
+
     this.adapter = adapter;
     this.versions = versions;
-    this.schema = schema;
+    this.schema = currentVersion.schema;
 
-    if (this.schema) {
-      this.store = createStore<ManagerState<TCurrent>>(() => ({
-        config: undefined,
-        status: 'initial',
-        error: null,
-        hasBeenHydrated: false,
-        metadata: {
-          dataVersion: 0,
-          schemaVersion: versions.at(-1)?.version ?? 0,
-        },
-        isInitial: true,
-        isLoading: false,
-        isSuccess: false,
-        isError: false,
-      }));
+    const metadata: ManagerMetadata = {
+      dataVersion: 0,
+      schemaVersion: currentVersion.version ?? 0,
+    };
 
-      const {config} = this.migrate();
+    const {config} = this.migrate(undefined, metadata);
 
-      this.setConfig(config as TCurrent);
-    }
+    this.store = createStore<ManagerState<TCurrent>>(() => ({
+      config,
+      status: 'initial',
+      error: null,
+      hasBeenHydrated: false,
+      metadata,
+      isInitial: true,
+      isLoading: false,
+      isSuccess: false,
+      isError: false,
+    }));
   }
 
   // ------------------------
   // Static methods
   // ------------------------
 
-  static create(adapter: BaseAdapter): ConfigManager<undefined> {
-    return new ConfigManager(adapter, undefined, undefined);
+  static create<TConfig>(
+    adapter: BaseAdapter,
+    initialVersion: VersionDef<void, TConfig>
+  ): ConfigManager<TConfig> {
+    return new ConfigManager<TConfig>(adapter, [initialVersion]);
   }
 
   // ------------------------
@@ -143,11 +146,7 @@ export class ConfigManager<TCurrent = undefined> {
 
     // Returning a NEW instance with the updated generic type <TNext>.
     // We pass the accumulated history (previous versions + new version).
-    return new ConfigManager<TNext>(
-      this.adapter,
-      [...this.versions, newVersion],
-      versionDef.schema
-    );
+    return new ConfigManager<TNext>(this.adapter, [...this.versions, newVersion]);
   }
 
   async load(): Promise<void> {
@@ -168,7 +167,7 @@ export class ConfigManager<TCurrent = undefined> {
 
     this.setStatusSuccess();
 
-    const migratedEnvelope: AdapterEnvelope = this.migrate(incomingEnvelope);
+    const migratedEnvelope: AdapterEnvelope = this.migrate(incomingEnvelope, this.metadata);
 
     this.setMetadata(migratedEnvelope.metadata);
     this.setConfig(migratedEnvelope.config as TCurrent);
@@ -209,7 +208,7 @@ export class ConfigManager<TCurrent = undefined> {
       // Handle Conflict (Server has newer data)
       if (error instanceof ConfigConflictError) {
         // Heal: We accept the server's data
-        const migratedEnvelope = this.migrate(error.serverEnvelope);
+        const migratedEnvelope = this.migrate(error.serverEnvelope, this.metadata);
         this.setStatusSuccess();
         this.setMetadata(migratedEnvelope.metadata);
         this.setConfig(migratedEnvelope.config as TCurrent);
@@ -236,7 +235,7 @@ export class ConfigManager<TCurrent = undefined> {
         );
       }
 
-      const migratedEnvelope: AdapterEnvelope = this.migrate(responseEnvelope);
+      const migratedEnvelope: AdapterEnvelope = this.migrate(responseEnvelope, this.metadata);
       this.setDataVersion(responseEnvelope.metadata.dataVersion);
       this.setConfig(migratedEnvelope.config as TCurrent);
       return migratedEnvelope.config as TCurrent;
@@ -257,9 +256,7 @@ export class ConfigManager<TCurrent = undefined> {
       const zodResult2 = schema.safeParse(undefined);
 
       if (zodResult2.error) {
-        throw new ConfigSchemaParseError(
-          zodResult2.error
-        );
+        throw new ConfigSchemaParseError(zodResult2.error);
       }
 
       return zodResult2.data;
@@ -268,14 +265,11 @@ export class ConfigManager<TCurrent = undefined> {
     return zodResult.data;
   }
 
-  protected migrate(initialEnvelope: AdapterEnvelope | void): AdapterEnvelope {
-    if (!this.schema) {
-      throw new Error(
-        '[@config-store] Failed to revert to defaults. Schema must be defined with `.optional()`, `.nullable()`, `.nullish()` or `.prefault({})` on the outer object and `.default()` on every property.'
-      );
-    }
-
-    if (!initialEnvelope) return this.getDefaultEnvelope();
+  protected migrate(
+    initialEnvelope: AdapterEnvelope | void,
+    metadata: ManagerMetadata
+  ): AdapterEnvelope<TCurrent> {
+    if (!initialEnvelope) return this.getDefaultEnvelope(metadata);
 
     let currentEnvelope: AdapterEnvelope = initialEnvelope;
 
@@ -287,7 +281,7 @@ export class ConfigManager<TCurrent = undefined> {
 
       if (!currentVersionDef) {
         // Current schema has unknown version number, reverting to defaults
-        currentEnvelope = this.getDefaultEnvelope();
+        currentEnvelope = this.getDefaultEnvelope(metadata);
         break;
       }
 
@@ -302,7 +296,7 @@ export class ConfigManager<TCurrent = undefined> {
 
       if (!nextVersionDef) {
         // Next schema not found, this should never happen. Reverting to defaults.
-        currentEnvelope = this.getDefaultEnvelope();
+        currentEnvelope = this.getDefaultEnvelope(metadata);
         break;
       }
 
@@ -332,7 +326,7 @@ export class ConfigManager<TCurrent = undefined> {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (e) {
         // Migration failed, reverting to defaults
-        currentEnvelope = this.getDefaultEnvelope();
+        currentEnvelope = this.getDefaultEnvelope(metadata);
         break;
       }
     }
@@ -345,19 +339,16 @@ export class ConfigManager<TCurrent = undefined> {
     };
   }
 
-  protected getDefaultEnvelope(): AdapterEnvelope {
-    if (!this.schema) {
-      throw new Error('[@config-store] Attempted to set metadata before adding a version');
-    }
-
+  protected getDefaultEnvelope(metadata: ManagerMetadata): AdapterEnvelope<TCurrent> {
     let config: TCurrent;
+
     try {
       config = this.parse(undefined, this.schema);
     } catch (e) {
       throw new ConfigSchemaParseError(e);
     }
 
-    return {config, metadata: this.metadata};
+    return {config, metadata: metadata};
   }
 
   protected setStatusLoading() {
