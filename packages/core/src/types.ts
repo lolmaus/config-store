@@ -4,7 +4,7 @@ import type {ConfigManager} from './manager.js';
 /**
  * Lets you track the loading state of the ConfigManager
  */
-export type ManagerLoadStatus = 'initial' | 'loading' | 'success' | 'error';
+export type ManagerLoadStatus = 'initial' | 'pending' | 'success' | 'error';
 
 /**
  * Shape of the state object, exposed as a Zustand store for reactivity
@@ -18,9 +18,17 @@ export interface ManagerState<TConfig> {
   readonly loadStatus: ManagerLoadStatus;
   readonly loadError: unknown | null;
   readonly isLoadInitial: boolean;
-  readonly isLoadLoading: boolean;
+  readonly isLoadPending: boolean;
   readonly isLoadSuccess: boolean;
   readonly isLoadError: boolean;
+
+  // Save state
+  readonly saveStatus: ManagerLoadStatus;
+  readonly saveError: unknown | null;
+  readonly isSaveInitial: boolean;
+  readonly isSavePending: boolean;
+  readonly isSaveSuccess: boolean;
+  readonly isSaveError: boolean;
 }
 
 /**

@@ -270,34 +270,6 @@ describe('AsyncAdapter', () => {
     });
   });
 
-  describe('write() — Concurrency: "optimistic"', () => {
-    it('fires both requests immediately with their respective metadata', async () => {
-      const slowMock: Mock<AsyncAdapterOptions['write']> = mock.fn(async () => Promise.resolve());
-
-      adapter = new AsyncAdapter({
-        read: readMock,
-        write: slowMock,
-        concurrency: 'optimistic',
-      });
-
-      const p1 = adapter.write({theme: 'light', volume: 1}, {dataVersion: 1, schemaVersion: 1});
-      const p2 = adapter.write({theme: 'light', volume: 2}, {dataVersion: 2, schemaVersion: 1});
-
-      await Promise.all([p1, p2]);
-
-      m = 'Both requests should fire';
-      assert.strictEqual(slowMock.mock.callCount(), 2, m);
-
-      const args1 = slowMock.mock.calls[0]?.arguments;
-      m = 'First request metadata check';
-      assert.deepStrictEqual(args1?.[2], {dataVersion: 1, schemaVersion: 1}, m);
-
-      const args2 = slowMock.mock.calls[1]?.arguments;
-      m = 'Second request metadata check';
-      assert.deepStrictEqual(args2?.[2], {dataVersion: 2, schemaVersion: 1}, m);
-    });
-  });
-
   describe('Error Handling', () => {
     it('calls custom onReadError when read fails', async () => {
       const error = new Error('Read failed');

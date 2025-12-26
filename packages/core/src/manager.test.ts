@@ -65,7 +65,7 @@ describe('ConfigManager', () => {
           },
           hasBeenHydrated: false,
 
-          loadStatus: 'loading',
+          loadStatus: 'pending',
           loadError: null,
         },
         m
@@ -300,17 +300,27 @@ describe('ConfigManager', () => {
           config: {
             theme: 'dark',
           },
-          loadError: null,
-          hasBeenHydrated: true,
           metadata: {
             dataVersion: 1,
             schemaVersion: 1,
           },
-          loadStatus: 'success',
+          hasBeenHydrated: true,
+
+          // Load state
+          loadStatus: 'initial',
           isLoadError: false,
-          isLoadInitial: false,
-          isLoadLoading: false,
-          isLoadSuccess: true,
+          isLoadInitial: true,
+          isLoadPending: false,
+          isLoadSuccess: false,
+          loadError: null,
+
+          // Save state
+          saveStatus: 'success',
+          saveError: null,
+          isSaveInitial: false,
+          isSavePending: false,
+          isSaveSuccess: true,
+          isSaveError: false,
         },
         m
       );
@@ -338,17 +348,27 @@ describe('ConfigManager', () => {
           config: {
             theme: 'dark',
           },
-          loadError: null,
           hasBeenHydrated: true,
           metadata: {
             dataVersion: 1,
             schemaVersion: 1,
           },
+
+          // Load state
           loadStatus: 'success',
           isLoadError: false,
           isLoadInitial: false,
-          isLoadLoading: false,
+          isLoadPending: false,
           isLoadSuccess: true,
+          loadError: null,
+
+          // Save state
+          saveStatus: 'success',
+          saveError: null,
+          isSaveInitial: false,
+          isSavePending: false,
+          isSaveSuccess: true,
+          isSaveError: false,
         },
         m
       );
@@ -408,7 +428,7 @@ describe('ConfigManager', () => {
     });
   });
 
-  describe('Getters', () => {
+  describe('unit: Getters', () => {
     it('config', () => {
       const manager = ConfigManager.create(adapter, {
         version: 1,
@@ -433,17 +453,27 @@ describe('ConfigManager', () => {
         Object.defineProperty(manager, 'store', {
           value: createStore<ManagerState<undefined>>(() => ({
             config: undefined,
-            loadStatus: 'initial',
-            isLoadError: false,
-            isLoadInitial: true,
-            isLoadLoading: false,
-            isLoadSuccess: false,
-            loadError: null,
-            hasBeenHydrated: false,
             metadata: {
               dataVersion: 123,
               schemaVersion: 321,
             },
+            hasBeenHydrated: false,
+
+            // Load state
+            loadStatus: 'initial',
+            isLoadError: false,
+            isLoadInitial: true,
+            isLoadPending: false,
+            isLoadSuccess: false,
+            loadError: null,
+
+            // Save state
+            saveStatus: 'initial',
+            saveError: null,
+            isSaveInitial: true,
+            isSavePending: false,
+            isSaveSuccess: false,
+            isSaveError: false,
           })),
         });
 
@@ -452,17 +482,27 @@ describe('ConfigManager', () => {
           manager.state,
           {
             config: undefined,
-            loadStatus: 'initial',
-            isLoadError: false,
-            isLoadInitial: true,
-            isLoadLoading: false,
-            isLoadSuccess: false,
-            loadError: null,
-            hasBeenHydrated: false,
             metadata: {
               dataVersion: 123,
               schemaVersion: 321,
             },
+            hasBeenHydrated: false,
+
+            // Load state
+            loadStatus: 'initial',
+            isLoadError: false,
+            isLoadInitial: true,
+            isLoadPending: false,
+            isLoadSuccess: false,
+            loadError: null,
+
+            // Save state
+            saveStatus: 'initial',
+            saveError: null,
+            isSaveInitial: true,
+            isSavePending: false,
+            isSaveSuccess: false,
+            isSaveError: false,
           },
           m
         );
@@ -492,8 +532,8 @@ describe('ConfigManager', () => {
         m = 'manager.isLoadInitial';
         assert.equal(manager.isLoadInitial, true, m);
 
-        m = 'manager.isLoadLoading';
-        assert.equal(manager.isLoadLoading, false, m);
+        m = 'manager.isLoadPending';
+        assert.equal(manager.isLoadPending, false, m);
 
         m = 'manager.isLoadSuccess';
         assert.equal(manager.isLoadSuccess, false, m);
@@ -514,17 +554,27 @@ describe('ConfigManager', () => {
         Object.defineProperty(manager, 'store', {
           value: createStore<ManagerState<undefined>>(() => ({
             config: undefined,
-            loadStatus: 'loading',
-            isLoadError: false,
-            isLoadInitial: false,
-            isLoadLoading: true,
-            isLoadSuccess: false,
-            loadError: null,
-            hasBeenHydrated: false,
             metadata: {
               dataVersion: 123,
               schemaVersion: 321,
             },
+            hasBeenHydrated: false,
+
+            // Load state
+            loadStatus: 'pending',
+            isLoadError: false,
+            isLoadInitial: false,
+            isLoadPending: true,
+            isLoadSuccess: false,
+            loadError: null,
+
+            // Save state
+            saveStatus: 'initial',
+            saveError: null,
+            isSaveInitial: true,
+            isSavePending: false,
+            isSaveSuccess: false,
+            isSaveError: false,
           })),
         });
 
@@ -533,23 +583,33 @@ describe('ConfigManager', () => {
           manager.state,
           {
             config: undefined,
-            loadStatus: 'loading',
-            isLoadError: false,
-            isLoadInitial: false,
-            isLoadLoading: true,
-            isLoadSuccess: false,
-            loadError: null,
-            hasBeenHydrated: false,
             metadata: {
               dataVersion: 123,
               schemaVersion: 321,
             },
+            hasBeenHydrated: false,
+
+            // Load state
+            loadStatus: 'pending',
+            isLoadError: false,
+            isLoadInitial: false,
+            isLoadPending: true,
+            isLoadSuccess: false,
+            loadError: null,
+
+            // Save state
+            saveStatus: 'initial',
+            saveError: null,
+            isSaveInitial: true,
+            isSavePending: false,
+            isSaveSuccess: false,
+            isSaveError: false,
           },
           m
         );
 
         m = 'manager.loadStatus';
-        assert.equal(manager.loadStatus, 'loading', m);
+        assert.equal(manager.loadStatus, 'pending', m);
 
         m = 'manager.loadError';
         assert.equal(manager.loadError, null, m);
@@ -573,8 +633,8 @@ describe('ConfigManager', () => {
         m = 'manager.isLoadInitial';
         assert.equal(manager.isLoadInitial, false, m);
 
-        m = 'manager.isLoadLoading';
-        assert.equal(manager.isLoadLoading, true, m);
+        m = 'manager.isLoadPending';
+        assert.equal(manager.isLoadPending, true, m);
 
         m = 'manager.isLoadSuccess';
         assert.equal(manager.isLoadSuccess, false, m);
@@ -595,17 +655,27 @@ describe('ConfigManager', () => {
         Object.defineProperty(manager, 'store', {
           value: createStore<ManagerState<undefined>>(() => ({
             config: undefined,
-            loadStatus: 'success',
-            isLoadError: false,
-            isLoadInitial: false,
-            isLoadLoading: false,
-            isLoadSuccess: true,
-            loadError: null,
-            hasBeenHydrated: true,
             metadata: {
               dataVersion: 123,
               schemaVersion: 321,
             },
+            hasBeenHydrated: true,
+
+            // Load state
+            loadStatus: 'success',
+            isLoadError: false,
+            isLoadInitial: false,
+            isLoadPending: false,
+            isLoadSuccess: true,
+            loadError: null,
+
+            // Save state
+            saveStatus: 'initial',
+            saveError: null,
+            isSaveInitial: true,
+            isSavePending: false,
+            isSaveSuccess: false,
+            isSaveError: false,
           })),
         });
 
@@ -614,17 +684,27 @@ describe('ConfigManager', () => {
           manager.state,
           {
             config: undefined,
-            loadStatus: 'success',
-            isLoadError: false,
-            isLoadInitial: false,
-            isLoadLoading: false,
-            isLoadSuccess: true,
-            loadError: null,
-            hasBeenHydrated: true,
             metadata: {
               dataVersion: 123,
               schemaVersion: 321,
             },
+            hasBeenHydrated: true,
+
+            // Load state
+            loadStatus: 'success',
+            isLoadError: false,
+            isLoadInitial: false,
+            isLoadPending: false,
+            isLoadSuccess: true,
+            loadError: null,
+
+            // Save state
+            saveStatus: 'initial',
+            saveError: null,
+            isSaveInitial: true,
+            isSavePending: false,
+            isSaveSuccess: false,
+            isSaveError: false,
           },
           m
         );
@@ -654,8 +734,8 @@ describe('ConfigManager', () => {
         m = 'manager.isLoadInitial';
         assert.equal(manager.isLoadInitial, false, m);
 
-        m = 'manager.isLoadLoading';
-        assert.equal(manager.isLoadLoading, false, m);
+        m = 'manager.isLoadPending';
+        assert.equal(manager.isLoadPending, false, m);
 
         m = 'manager.isLoadSuccess';
         assert.equal(manager.isLoadSuccess, true, m);
@@ -676,17 +756,27 @@ describe('ConfigManager', () => {
         Object.defineProperty(manager, 'store', {
           value: createStore<ManagerState<undefined>>(() => ({
             config: undefined,
-            loadStatus: 'error',
-            isLoadError: true,
-            isLoadInitial: false,
-            isLoadLoading: false,
-            isLoadSuccess: false,
-            loadError: "I'm afraid I can't do that, Dave.",
-            hasBeenHydrated: true,
             metadata: {
               dataVersion: 123,
               schemaVersion: 321,
             },
+            hasBeenHydrated: true,
+
+            // Load state
+            loadStatus: 'error',
+            isLoadError: true,
+            isLoadInitial: false,
+            isLoadPending: false,
+            isLoadSuccess: false,
+            loadError: "I'm afraid I can't do that, Dave.",
+
+            // Save state
+            saveStatus: 'initial',
+            saveError: null,
+            isSaveInitial: true,
+            isSavePending: false,
+            isSaveSuccess: false,
+            isSaveError: false,
           })),
         });
 
@@ -695,17 +785,27 @@ describe('ConfigManager', () => {
           manager.state,
           {
             config: undefined,
-            loadStatus: 'error',
-            isLoadError: true,
-            isLoadInitial: false,
-            isLoadLoading: false,
-            isLoadSuccess: false,
-            loadError: "I'm afraid I can't do that, Dave.",
-            hasBeenHydrated: true,
             metadata: {
               dataVersion: 123,
               schemaVersion: 321,
             },
+            hasBeenHydrated: true,
+
+            // Load state
+            loadStatus: 'error',
+            isLoadError: true,
+            isLoadInitial: false,
+            isLoadPending: false,
+            isLoadSuccess: false,
+            loadError: "I'm afraid I can't do that, Dave.",
+
+            // Save state
+            saveStatus: 'initial',
+            saveError: null,
+            isSaveInitial: true,
+            isSavePending: false,
+            isSaveSuccess: false,
+            isSaveError: false,
           },
           m
         );
@@ -735,8 +835,8 @@ describe('ConfigManager', () => {
         m = 'manager.isLoadInitial';
         assert.equal(manager.isLoadInitial, false, m);
 
-        m = 'manager.isLoadLoading';
-        assert.equal(manager.isLoadLoading, false, m);
+        m = 'manager.isLoadPending';
+        assert.equal(manager.isLoadPending, false, m);
 
         m = 'manager.isLoadSuccess';
         assert.equal(manager.isLoadSuccess, false, m);

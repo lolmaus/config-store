@@ -1,7 +1,7 @@
 import {BaseAdapter} from './base.js';
 import type {AdapterEnvelope, ManagerMetadata} from '../types.js';
 
-export type ConcurrencyStrategy = 'abort' | 'optimistic' | 'sequential';
+export type ConcurrencyStrategy = 'abort' | 'sequential';
 
 export interface AsyncAdapterOptions {
   read: () => Promise<AdapterEnvelope>;
@@ -125,7 +125,6 @@ export class AsyncAdapter extends BaseAdapter {
       return queuedTask;
     }
 
-    // Strategy: Optimistic (Parallel)
-    return runWrite();
+    throw new Error(`[@config-store] Invalid strategy: ${strategy}`);
   }
 }

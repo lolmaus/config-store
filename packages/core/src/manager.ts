@@ -9,6 +9,7 @@ import {
 } from './types.js';
 import {createStore, type StoreApi} from 'zustand/vanilla';
 import {ConfigSchemaOutdatedError, ConfigConflictError, ConfigSchemaParseError} from './errors.js';
+import type {ManagerStatus} from './index.js';
 
 export class ConfigManager<TCurrent = undefined> {
   // ------------------------
@@ -51,9 +52,17 @@ export class ConfigManager<TCurrent = undefined> {
       loadStatus: 'initial',
       loadError: null,
       isLoadInitial: true,
-      isLoadLoading: false,
+      isLoadPending: false,
       isLoadSuccess: false,
       isLoadError: false,
+
+      // Save state
+      saveStatus: 'initial',
+      saveError: null,
+      isSaveInitial: true,
+      isSavePending: false,
+      isSaveSuccess: false,
+      isSaveError: false,
     }));
   }
 
@@ -73,18 +82,10 @@ export class ConfigManager<TCurrent = undefined> {
   // ------------------------
 
   get state(): ManagerState<TCurrent> {
-    if (!this.store) {
-      throw new Error('[@config-store] Attempted to access current state before adding a version');
-    }
-
     return this.store.getState();
   }
 
   get config(): TCurrent {
-    if (!this.state.config) {
-      throw new Error('[@config-store] Attempted to access current config before adding a version');
-    }
-
     return this.state.config;
   }
 
@@ -116,8 +117,8 @@ export class ConfigManager<TCurrent = undefined> {
     return this.state.isLoadInitial;
   }
 
-  get isLoadLoading(): boolean {
-    return this.state.isLoadLoading;
+  get isLoadPending(): boolean {
+    return this.state.isLoadPending;
   }
 
   get isLoadSuccess(): boolean {
@@ -152,22 +153,18 @@ export class ConfigManager<TCurrent = undefined> {
   }
 
   async load(): Promise<void> {
-    if (!this.store) {
-      throw new Error('[@config-store] Attempted to load config before adding a version');
-    }
-
-    this.setStatusLoading();
+    this.setLoadStatus('pending');
 
     let incomingEnvelope: AdapterEnvelope | void;
 
     try {
       incomingEnvelope = await this.adapter.read();
     } catch (e) {
-      this.setStatusError(e);
-      return;
+      this.setLoadStatus('error', e);
+      throw e;
     }
 
-    this.setStatusSuccess();
+    this.setLoadStatus('success');
 
     const migratedEnvelope: AdapterEnvelope = this.migrate(incomingEnvelope, this.metadata);
 
@@ -176,17 +173,11 @@ export class ConfigManager<TCurrent = undefined> {
   }
 
   async save(config: TCurrent): Promise<TCurrent> {
-    if (!this.store) {
-      throw new Error('[@config-store] Attempted to save config before adding a version');
-    }
-
-    // 1. Snapshot previous state for potential rollback
-    const previousConfig = this.store.getState();
-    const previousMetadata = {...this.metadata};
-
-    // 2. Optimistic Update
+    // Optimistic Update
     // We increment the version locally and update the store immediately
     this.incrementDataVersion();
+    this.setSaveStatus('pending');
+
     const optimisticMetadata = {...this.metadata};
 
     this.setConfig(config);
@@ -197,8 +188,6 @@ export class ConfigManager<TCurrent = undefined> {
       // 3. Attempt Persistence
       responseEnvelope = await this.adapter.write(config, optimisticMetadata);
     } catch (error) {
-      // 5. Handle Errors
-
       // Check for Stale Request:
       // If the manager's dataVersion is HIGHER than what we sent in this request,
       // it means a newer save() has already started/completed.
@@ -211,26 +200,29 @@ export class ConfigManager<TCurrent = undefined> {
       if (error instanceof ConfigConflictError) {
         // Heal: We accept the server's data
         const migratedEnvelope = this.migrate(error.serverEnvelope, this.metadata);
-        this.setStatusSuccess();
+        this.setSaveStatus('success');
         this.setMetadata(migratedEnvelope.metadata);
         this.setConfig(migratedEnvelope.config as TCurrent);
         return migratedEnvelope.config as TCurrent;
       }
 
       // Handle Generic Error (Network, etc)
-      // Rollback: Revert to the state before this request started
-      this.setMetadata(previousMetadata);
-      this.store.setState(previousConfig);
-
+      this.setSaveStatus('error', error);
       throw error;
     }
 
-    this.setStatusSuccess();
+    if (optimisticMetadata.dataVersion < this.dataVersion) {
+      // This request is outdated, ignore
+      return config;
+    }
+
+    this.setSaveStatus('success');
 
     // 4. Handle Success Response
     // If adapter returns a body, we accept it as the new truth (e.g. server sanitization)
     if (responseEnvelope) {
       if (responseEnvelope.metadata.schemaVersion > this.schemaVersion) {
+        // ToDo: figure out how to recover from this case
         throw new ConfigSchemaOutdatedError(
           responseEnvelope.metadata.schemaVersion,
           this.schemaVersion
@@ -353,60 +345,37 @@ export class ConfigManager<TCurrent = undefined> {
     return {config, metadata: metadata};
   }
 
-  protected setStatusLoading() {
-    if (!this.store) {
-      throw new Error('[@config-store] Attempted to set metadata before adding a version');
-    }
-
+  protected setLoadStatus(status: 'pending' | 'success'): void;
+  protected setLoadStatus(status: 'error', e: unknown): void;
+  protected setLoadStatus(status: ManagerStatus, error: unknown = null) {
     this.store.setState((state) => ({
       ...state,
-      loadStatus: 'loading',
+      loadStatus: status,
       isLoadInitial: false,
-      isLoadLoading: true,
-      isLoadSuccess: false,
-      isLoadError: false,
-      loadError: null,
-    }));
-  }
-
-  protected setStatusSuccess() {
-    if (!this.store) {
-      throw new Error('[@config-store] Attempted to set metadata before adding a version');
-    }
-
-    this.store.setState((state) => ({
-      ...state,
-      loadStatus: 'success',
-      isLoadInitial: false,
-      isLoadLoading: false,
-      isLoadSuccess: true,
-      isLoadError: false,
-      loadError: null,
-      hasBeenHydrated: true,
-    }));
-  }
-
-  protected setStatusError(error: unknown) {
-    if (!this.store) {
-      throw new Error('[@config-store] Attempted to set metadata before adding a version');
-    }
-
-    this.store.setState((state) => ({
-      ...state,
-      loadStatus: 'error',
-      isLoadInitial: false,
-      isLoadLoading: false,
-      isLoadSuccess: false,
-      isLoadError: true,
+      isLoadPending: status === 'pending',
+      isLoadSuccess: status === 'success',
+      isLoadError: status === 'error',
       loadError: error,
+      hasBeenHydrated: status === 'success' || state.hasBeenHydrated,
+    }));
+  }
+
+  protected setSaveStatus(status: 'pending' | 'success'): void;
+  protected setSaveStatus(status: 'error', e: unknown): void;
+  protected setSaveStatus(status: ManagerStatus, error: unknown = null) {
+    this.store.setState((state) => ({
+      ...state,
+      saveStatus: status,
+      isSaveInitial: false,
+      isSavePending: status === 'pending',
+      isSaveSuccess: status === 'success',
+      isSaveError: status === 'error',
+      saveError: error,
+      hasBeenHydrated: status === 'success' || state.hasBeenHydrated,
     }));
   }
 
   protected setMetadata(metadata: ManagerMetadata) {
-    if (!this.store) {
-      throw new Error('[@config-store] Attempted to set metadata before adding a version');
-    }
-
     this.store.setState((state) => ({
       ...state,
       metadata,
@@ -414,10 +383,6 @@ export class ConfigManager<TCurrent = undefined> {
   }
 
   protected setDataVersion(dataVersion: number) {
-    if (!this.store) {
-      throw new Error('[@config-store] Attempted to set dataVersion before adding a version');
-    }
-
     this.store.setState((state) => ({
       ...state,
       metadata: {
@@ -428,10 +393,6 @@ export class ConfigManager<TCurrent = undefined> {
   }
 
   protected setConfig(config: TCurrent) {
-    if (!this.store) {
-      throw new Error('[@config-store] Attempted to set config before adding a version');
-    }
-
     this.store.setState((state) => ({
       ...state,
       config,
@@ -439,10 +400,6 @@ export class ConfigManager<TCurrent = undefined> {
   }
 
   protected incrementDataVersion() {
-    if (!this.store) {
-      throw new Error('[@config-store] Attempted to increment dataVersion before adding a version');
-    }
-
     this.store.setState((state) => ({
       ...state,
       metadata: {

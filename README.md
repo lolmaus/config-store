@@ -9,9 +9,9 @@ A strict, schema-first config manager designed for long-lived frontend apps. It 
 - **Fail-Safe:** Malformed configs that cannot be migrated are swapped with schema defaults and overwrite the invalid data on the next save.
 - **Flexible Adapters:** Ships with a `LocalStorageAdapter` and a robust `AsyncAdapter` (for REST APIs). You can easily define custom adapters for other protocols (e.g., WebSocket, IndexedDB).
 - **Concurrency Control:** The `AsyncAdapter` provides three strategies for parallel writes:
-    - `abort`: Cancels previous pending requests (default, relies on AbortController).
-    - `optimistic`: Sends all requests but handles `409 Conflict` via versioning (requires backend logic).
-    - `sequential`: Wait for each update to finish before processing the next one. Updates pile up in a queue. Useful for legacy backends, at the cost of UX.
+    - abort: Cancels previous pending requests (default, relies on AbortController).
+    - OOC: Sends all requests but handles `409 Conflict` via versioning (requires backend logic).
+    - sequential: Wait for each update to finish before processing the next one. Updates pile up in a queue. Useful for legacy backends, at the cost of UX.
 - **Framework-agnostic:** The core can be used with vanilla JS or in any framework.
 - **Framework integrations:** Offers the following integrations:
     - **React**: Includes a `useConfig` hook with **selector support** (e.g., `s => s.theme`). This allows a component to rerender only when the relevant individual setting changes. Other changes to the config will not cause rerenders.
@@ -35,7 +35,7 @@ A strict, schema-first config manager designed for long-lived frontend apps. It 
         - [3.1 The AsyncAdapter Helper](#31-the-asyncadapter-helper)
         - [3.2 Handling Concurrency (Race Conditions)](#32-handling-concurrency-race-conditions)
             - [3.2.1 concurrency: abort — default](#321-concurrency-abort--default)
-            - [3.2.2 concurrency: optimistic — ideal solution, requires backend logic](#322-concurrency-optimistic--ideal-solution-requires-backend-logic)
+            - [3.2.2 concurrency: OOC — ideal solution, requires backend logic](#322-concurrency-ooc--ideal-solution-requires-backend-logic)
             - [3.2.3 concurrency: sequential — legacy Fallback](#323-concurrency-sequential--legacy-fallback)
         - [3.3 Handling Backend Responses on save](#33-handling-backend-responses-on-save)
         - [3.4 Handle loading and error states in the UI](#34-handle-loading-and-error-states-in-the-ui)
@@ -404,13 +404,19 @@ new AsyncAdapter({
 
 ⠀
 
-#### 3.2.2 concurrency: optimistic — ideal solution, requires backend logic
+#### 3.2.2 concurrency: OOC — ideal solution, requires backend logic
 
-**Best for:** sophisticated backends implementing Optimistic Concurrency Control (OCC).
+**Best for:** sophisticated backends implementing [Optimistic Concurrency Control](https://en.wikipedia.org/wiki/Optimistic_concurrency_control) (OCC).
 
-The library fires requests immediately. By passing the `metadata` (containing version numbers) in your `write` function, your server can reject outdated writes (e.g., returning `409 Conflict`).
+Use the `abort` strategy for this approach. The main difference happens on the backend side.
 
-The adapter stores metadata separately from the config, allowing you to implement version increments or timestamps without polluting your settings schema.
+With each request, the frontend sends metadata containing a `dataVersion` number. Each subsequent request increments `dataVesion`.
+
+If requests come in wrong order, the backend may process a recent request first. When it then processes an older request, it must check if the `dataVersion` of the request being processed is larger than `dataVersion` in the database. If it's not, the backend rejects the request with `409 Conflict` HTTP code.
+
+When the library then processes the rejection on the frontend, it notices that the `dataVersion` of the rejected request is lower than the current one, and simply ignores it.
+
+Ths strategy guarantees that older data never overwrites newer data.
 
 ⠀
 

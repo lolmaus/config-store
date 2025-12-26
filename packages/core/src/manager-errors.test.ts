@@ -21,21 +21,13 @@ interface PendingWrite extends PendingRead {
 
 // --- Advanced Mock Adapter ---
 class ControlledMockAdapter extends BaseAdapter {
-  // Store the current server truth
-  state: AdapterEnvelope | undefined = undefined;
-
   // A pending read deferred we can resolve or reject manually
   pendingRead?: PendingRead;
 
   read = mock.fn(async () => {
     return new Promise<AdapterEnvelope | void>((resolve, reject) => {
       this.pendingRead = {
-        resolve: (envelope: AdapterEnvelope | void) => {
-          if (envelope) {
-            this.state = envelope;
-          }
-          resolve(envelope);
-        },
+        resolve,
         reject,
       };
     });
@@ -49,24 +41,7 @@ class ControlledMockAdapter extends BaseAdapter {
       this.pendingWrites.push({
         config: nextConfig,
         metadata,
-        resolve: (val) => {
-          // Simulate server-side persistence logic
-          if (val && val.config) {
-            // If the server returned a new payload, that becomes truth
-            this.state = val;
-          } else {
-            // If void (204 No Content), the submitted config becomes truth
-            // and we simulate a dataVersion bump
-            this.state = {
-              config: nextConfig,
-              metadata: {
-                ...metadata,
-                dataVersion: metadata.dataVersion + 1,
-              },
-            };
-          }
-          resolve(val);
-        },
+        resolve,
         reject,
       });
     });
@@ -100,6 +75,8 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
         {
           loadStatus: 'initial',
           loadError: null,
+          saveStatus: 'initial',
+          saveError: null,
           hasBeenHydrated: false,
           metadata: {
             dataVersion: 0,
@@ -118,8 +95,10 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
       assert.partialDeepStrictEqual(
         manager.state,
         {
-          loadStatus: 'loading',
+          loadStatus: 'pending',
           loadError: null,
+          saveStatus: 'initial',
+          saveError: null,
           hasBeenHydrated: false,
           metadata: {
             dataVersion: 0,
@@ -132,15 +111,23 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
       m = 'Read should be pending';
       assert.ok(adapter.pendingRead, m);
 
-      adapter.pendingRead.reject('Network Down');
-      await readPromise;
+      adapter.pendingRead.reject({err: 'Network Down'});
+
+      m = 'Read promise should reject';
+      await assert.rejects(
+        readPromise,
+        (e) => e && typeof e === 'object' && 'err' in e && e.err === 'Network Down',
+        m
+      );
 
       m = 'manager.state final';
       assert.partialDeepStrictEqual(
         manager.state,
         {
           loadStatus: 'error',
-          loadError: 'Network Down',
+          loadError: {err: 'Network Down'},
+          saveStatus: 'initial',
+          saveError: null,
           hasBeenHydrated: false,
           metadata: {
             dataVersion: 0,
@@ -177,6 +164,8 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
         {
           loadStatus: 'success',
           loadError: null,
+          saveStatus: 'initial',
+          saveError: null,
           hasBeenHydrated: true,
           metadata: {
             dataVersion: 123,
@@ -191,12 +180,14 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
 
       const readPromise2 = manager.load();
 
-      m = 'manager.state loading ';
+      m = 'manager.state loading';
       assert.partialDeepStrictEqual(
         manager.state,
         {
-          loadStatus: 'loading',
+          loadStatus: 'pending',
           loadError: null,
+          saveStatus: 'initial',
+          saveError: null,
           hasBeenHydrated: true,
           metadata: {
             dataVersion: 123,
@@ -209,15 +200,23 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
       m = 'Read should be pending';
       assert.ok(adapter.pendingRead, m);
 
-      adapter.pendingRead.reject('Network Down');
-      await readPromise2;
+      adapter.pendingRead.reject({err: 'Network Down'});
+
+      m = 'Read promise should reject';
+      await assert.rejects(
+        readPromise2,
+        (e) => e && typeof e === 'object' && 'err' in e && e.err === 'Network Down',
+        m
+      );
 
       m = 'manager.state final';
       assert.partialDeepStrictEqual(
         manager.state,
         {
           loadStatus: 'error',
-          loadError: 'Network Down',
+          loadError: {err: 'Network Down'},
+          saveStatus: 'initial',
+          saveError: null,
           hasBeenHydrated: true,
           metadata: {
             dataVersion: 123,
@@ -239,19 +238,35 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
   });
 
   describe('Save', () => {
-    beforeEach(async () => {
-      // We need a successful load before we can use write
-      const initialData: AdapterEnvelope = {
-        config: {theme: 'light'},
-        metadata: {dataVersion: 1, schemaVersion: 1},
-      };
+    // beforeEach(async () => {
+    // We need a successful load before we can use write
+    // const initialData: AdapterEnvelope = {
+    //   config: {theme: 'light'},
+    //   metadata: {dataVersion: 1, schemaVersion: 1},
+    // };
+    // const promise = manager.load();
+    // adapter.pendingRead?.resolve(initialData);
+    // await promise;
+    // });
 
-      const promise = manager.load();
-      adapter.pendingRead?.resolve(initialData);
-      await promise;
-    });
+    it('Generic Error (Network Fail). Retains latest state optimistically.', async () => {
+      m = 'manager.state initial';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          loadStatus: 'initial',
+          loadError: null,
+          saveStatus: 'initial',
+          saveError: null,
+          hasBeenHydrated: false,
+          metadata: {
+            dataVersion: 0,
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
 
-    it('Generic Error (Network Fail). Reverts optimistic update.', async () => {
       m = 'initial manager.config.theme';
       assert.strictEqual(manager.config.theme, 'light', m);
 
@@ -262,33 +277,97 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
       m = 'Should have optimistically updated to dark';
       assert.strictEqual(manager.config.theme, 'dark', m);
 
-      // Simulate Adapter Failure (Network Error)
-      const pending = adapter.pendingWrites.shift();
-
-      m = 'Write should be pending';
-      assert.ok(pending, m);
-
-      pending.reject(new Error('Network Down'));
-
-      m = 'Should reject the promise';
-      await assert.rejects(
-        savePromise,
-        (err: unknown) =>
-          err && typeof err === 'object' && 'message' in err && err.message === 'Network Down',
+      m = 'manager.state immediately after save';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          loadStatus: 'initial',
+          loadError: null,
+          saveStatus: 'pending', // change
+          saveError: null,
+          hasBeenHydrated: false,
+          metadata: {
+            dataVersion: 1, // change
+            schemaVersion: 1,
+          },
+        },
         m
       );
 
-      // Verify Rollback
-      m = 'Should revert to "light" after write failure';
-      assert.strictEqual(manager.config.theme, 'light', m);
+      m = 'Write should be pending';
+      assert.ok(adapter.pendingWrites[0], m);
+
+      adapter.pendingWrites[0].reject({err: 'Network Down'});
+
+      m = 'Should reject the save promise';
+      await assert.rejects(
+        savePromise,
+        (e: unknown) => e && typeof e === 'object' && 'err' in e && e.err === 'Network Down',
+        m
+      );
+
+      m = 'Should remain on "dark" after write failure';
+      assert.strictEqual(manager.config.theme, 'dark', m);
+
+      m = 'manager.state final';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          loadStatus: 'initial',
+          loadError: null,
+          saveStatus: 'error',
+          saveError: {err: 'Network Down'},
+          hasBeenHydrated: false,
+          metadata: {
+            dataVersion: 1,
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
     });
 
-    it('Conflict Error on LAST request. Heals from server payload.', async () => {
+    it('Backend has newer data, Conflict Error, accepts backend data', async () => {
+      m = 'manager.state initial';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          loadStatus: 'initial',
+          loadError: null,
+          saveStatus: 'initial',
+          saveError: null,
+          hasBeenHydrated: false,
+          metadata: {
+            dataVersion: 0,
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
+
       m = 'initial manager.config.theme';
       assert.strictEqual(manager.config.theme, 'light', m);
 
       // Start Save: v1 -> v2, dark
       const savePromise = manager.save({theme: 'dark'});
+
+      m = 'manager.state immediately after save';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          config: {theme: 'dark'},
+          loadStatus: 'initial',
+          loadError: null,
+          saveStatus: 'pending', // change
+          saveError: null,
+          hasBeenHydrated: false,
+          metadata: {
+            dataVersion: 1, // change
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
 
       // Simulate Conflict (Server is actually at v5, theme: 'blue')
       const serverEnvelope: AdapterEnvelope = {
@@ -297,13 +376,11 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
       };
       const conflictError = new ConfigConflictError(serverEnvelope);
 
-      const pending = adapter.pendingWrites.shift();
+      // Simulate network error
+      adapter.pendingWrites[0]!.reject(conflictError);
 
-      m = 'promise should be pending';
-      assert.ok(pending, m);
-
-      pending.reject(conflictError);
-      await savePromise;
+      m = 'Should resolve the save promise';
+      await assert.doesNotReject(savePromise, (e: unknown) => e instanceof ConfigConflictError, m);
 
       // Verify Healing
       m = 'Should accept the server truth (blue) instead of reverting to light';
@@ -311,138 +388,867 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
 
       m = 'Should update metadata to match server';
       assert.strictEqual(manager.dataVersion, 5, m);
+
+      m = 'manager.state final';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          loadStatus: 'initial',
+          loadError: null,
+          saveStatus: 'success', // change
+          saveError: null,
+          hasBeenHydrated: true,
+          metadata: {
+            dataVersion: 5, // change
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
     });
 
-    it('Status Correction: Conflict Resolution should mark manager as Success/Hydrated if it was previously in Error', async () => {
-      // 1. Setup: Create a FRESH manager to bypass the 'beforeEach' hydration
-      const localAdapter = new ControlledMockAdapter();
-      const localManager = ConfigManager.create(localAdapter, {
-        version: 1,
-        schema: themeSchema,
-      });
+    it('Conflict Error on outdated request. Ignored.', async () => {
+      m = 'manager.state initial';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          loadStatus: 'initial',
+          loadError: null,
+          saveStatus: 'initial',
+          saveError: null,
+          hasBeenHydrated: false,
+          metadata: {
+            dataVersion: 0,
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
 
-      // Force manager into 'error' state (Simulate Offline on App Boot)
-      const loadPromise = localManager.load();
-      localAdapter.pendingRead?.reject(new Error('Offline'));
-      await loadPromise;
-
-      m = 'Manager should be in error state initially';
-      assert.strictEqual(localManager.state.loadStatus, 'error', m);
-      // This will now PASS because we bypassed the beforeEach
-      assert.strictEqual(localManager.state.hasBeenHydrated, false, m);
-
-      // 2. Action: Attempt to Save
-      const savePromise = localManager.save({theme: 'dark'});
-
-      // 3. Simulate: Server is reachable but returns Conflict
-      // (e.g. we came online but were out of date)
-      const conflictPayload: AdapterEnvelope = {
-        config: {theme: 'blue'},
-        metadata: {dataVersion: 10, schemaVersion: 1},
-      };
-
-      const pendingWrite = localAdapter.pendingWrites.shift();
-      assert.ok(pendingWrite, 'Write should be pending');
-
-      // Reject with Conflict
-      pendingWrite.reject(new ConfigConflictError(conflictPayload));
-
-      // 4. Await resolution (Healing)
-      await savePromise;
-
-      // 5. Assertions
-      m = 'Config should be healed to server value';
-      assert.strictEqual(localManager.config.theme, 'blue', m);
-
-      m = 'Status should be updated to success after successful healing';
-      assert.strictEqual(localManager.state.loadStatus, 'success', m);
-
-      m = 'Manager should be hydrated after processing conflict payload';
-      assert.strictEqual(localManager.state.hasBeenHydrated, true, m);
-    });
-
-    it('Conflict Error on STALE request. Ignored.', async () => {
       m = 'initial manager.config.theme';
       assert.strictEqual(manager.config.theme, 'light', m);
 
       m = 'initial manager.dataVersion';
-      assert.strictEqual(manager.dataVersion, 1, m);
+      assert.strictEqual(manager.dataVersion, 0, m);
 
-      // Request A (Stale): v1 -> v2 (dark)
-      const p1 = manager.save({theme: 'dark'});
-      const reqA = adapter.pendingWrites.shift();
+      const outdatedPromise = manager.save({theme: 'dark'});
 
-      m = 'req A exists';
-      assert.ok(reqA, m);
+      m = 'manager.state immediately after outdated request starts';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          loadStatus: 'initial',
+          loadError: null,
+          saveStatus: 'pending', // change
+          saveError: null,
+          hasBeenHydrated: false,
+          metadata: {
+            dataVersion: 1, // change
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
 
-      // Request B (Fresh): v2 -> v3 (blue)
-      // Manager is optimistically at 'dark' (v2) when B starts.
-      const p2 = manager.save({theme: 'blue'});
-      const reqB = adapter.pendingWrites.shift();
+      m = 'Manager should be optimistically at dark';
+      assert.strictEqual(manager.config.theme, 'dark', m);
 
-      m = 'reqB exists';
-      assert.ok(reqB, m);
+      const freshPromise = manager.save({theme: 'blue'});
+
+      m = 'manager.state immediately after fresh request starts';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          loadStatus: 'initial',
+          loadError: null,
+          saveStatus: 'pending', // still
+          saveError: null,
+          hasBeenHydrated: false,
+          metadata: {
+            dataVersion: 2, // change
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
 
       m = 'Manager should be optimistically at blue';
       assert.strictEqual(manager.config.theme, 'blue', m);
 
       // Resolve Request B FIRST (Success)
-      // Server accepts B.
-      reqB.resolve({
+      // Server accepts blue.
+      adapter.pendingWrites[1]!.resolve({
         config: {theme: 'blue'},
-        metadata: {dataVersion: 3, schemaVersion: 1},
+        metadata: {dataVersion: 2, schemaVersion: 1},
       });
-      await p2;
+      await freshPromise;
 
-      m = 'manager.config.theme.theme after req2 completes';
+      m = 'manager.state after fresh request resolves';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          loadStatus: 'initial',
+          loadError: null,
+          saveStatus: 'success', // change
+          saveError: null,
+          hasBeenHydrated: true, // change
+          metadata: {
+            dataVersion: 2, // still
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
+
+      m = 'manager.config.theme.theme after fresh request completes';
       assert.strictEqual(manager.config.theme, 'blue', m);
 
-      m = 'manager.dataVersion after req2 completes';
-      assert.strictEqual(manager.dataVersion, 3, m);
+      m = 'manager.dataVersion after fresh request completes';
+      assert.strictEqual(manager.dataVersion, 2, m);
 
-      // Now Reject Request A (Conflict)
-      // This represents an old request finally failing after a newer one succeeded.
+      // Now Reject outdated Request A (Conflict)
       const staleServerState: AdapterEnvelope = {
         config: {theme: 'light'},
         metadata: {dataVersion: 1, schemaVersion: 1},
       };
-      reqA.reject(new ConfigConflictError(staleServerState));
+      adapter.pendingWrites[0]!.reject(new ConfigConflictError(staleServerState));
 
-      await p1.catch(() => {});
+      m = 'The first promise should NOT reject';
+      await assert.doesNotReject(outdatedPromise, m);
 
-      // 6. Verify State Integrity
-      m = 'Store should remain at "blue" (v3). The failure of v2 should not revert v3.';
+      m = 'manager.state after outdated request fails';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          loadStatus: 'initial',
+          loadError: null,
+          saveStatus: 'success', // still
+          saveError: null,
+          hasBeenHydrated: true, // still
+          metadata: {
+            dataVersion: 2, // still
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
+
+      // Verify State Integrity
+      m = 'Store should remain at "blue"';
       assert.strictEqual(manager.config.theme, 'blue', m);
 
-      m = 'Metadata should remain at v3';
-      assert.strictEqual(manager.dataVersion, 3, m);
+      m = 'dataVersion should remain at v2';
+      assert.strictEqual(manager.dataVersion, 2, m);
     });
 
-    it('Generic Error on STALE request. Ignored.', async () => {
-      // 1. Req A (dark)
-      const p1 = manager.save({theme: 'dark'});
-      const reqA = adapter.pendingWrites.shift();
+    it('Two requests, both succeed in normal order.', async () => {
+      m = 'manager.state initial';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          loadStatus: 'initial',
+          loadError: null,
+          saveStatus: 'initial',
+          saveError: null,
+          hasBeenHydrated: false,
+          metadata: {
+            dataVersion: 0,
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
 
-      // 2. Req B (blue)
-      const p2 = manager.save({theme: 'blue'});
-      const reqB = adapter.pendingWrites.shift();
+      // Outdated request (dark)
+      const outdatedPromise = manager.save({theme: 'dark'});
 
-      // 3. Resolve B Success
-      if (reqB) {
-        reqB.resolve({
-          config: {theme: 'blue'},
-          metadata: {dataVersion: 3, schemaVersion: 1},
-        });
-      }
-      await p2;
+      m = 'manager.state after outdated request starts';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          loadStatus: 'initial',
+          loadError: null,
+          saveStatus: 'pending', // change
+          saveError: null,
+          hasBeenHydrated: false,
+          metadata: {
+            dataVersion: 1, // change
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
 
-      // 4. Fail A (Network Error)
-      if (reqA) {
-        reqA.reject(new Error('Network Timeout'));
-      }
-      await p1.catch(() => {});
+      // Fresh request (blue)
+      const freshPromise = manager.save({theme: 'blue'});
 
-      m = 'Store should stay at blue. Old network error should not revert new state.';
+      m = 'manager.state after fresh request starts';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          loadStatus: 'initial',
+          loadError: null,
+          saveStatus: 'pending', // still
+          saveError: null,
+          hasBeenHydrated: false,
+          metadata: {
+            dataVersion: 2, // change
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
+
+      // Outdated reqeust succeeds first
+      adapter.pendingWrites[0]!.resolve({
+        config: {theme: 'dark'},
+        metadata: {dataVersion: 1, schemaVersion: 1},
+      });
+
+      m = 'Successful outdated request should not reject';
+      await assert.doesNotReject(outdatedPromise, m);
+
+      m = 'manager.state after outdated request succeeds';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          loadStatus: 'initial',
+          loadError: null,
+          saveStatus: 'pending', // still, because the other request is pending
+          saveError: null,
+          hasBeenHydrated: false, // still
+          metadata: {
+            dataVersion: 2, // still
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
+
+      m = 'Store should stay at blue';
+      assert.strictEqual(manager.config.theme, 'blue', m);
+
+      // Fresh reqeust succeeds second
+      adapter.pendingWrites[1]!.resolve({
+        config: {theme: 'blue'},
+        metadata: {dataVersion: 2, schemaVersion: 1},
+      });
+
+      m = 'Successful fresh request should not reject';
+      await assert.doesNotReject(freshPromise, m);
+
+      m = 'manager.state after fresh request succeeds';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          loadStatus: 'initial',
+          loadError: null,
+          saveStatus: 'success', // change
+          saveError: null,
+          hasBeenHydrated: true, // change
+          metadata: {
+            dataVersion: 2, // still
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
+
+      m = 'Store should stay at blue';
+      assert.strictEqual(manager.config.theme, 'blue', m);
+    });
+
+    it('Generic Error on an outdated request. Ignored.', async () => {
+      m = 'manager.state initial';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          loadStatus: 'initial',
+          loadError: null,
+          saveStatus: 'initial',
+          saveError: null,
+          hasBeenHydrated: false,
+          metadata: {
+            dataVersion: 0,
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
+
+      // Outdated request (dark)
+      const outdatedPromise = manager.save({theme: 'dark'});
+
+      m = 'manager.state after outdated request starts';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          loadStatus: 'initial',
+          loadError: null,
+          saveStatus: 'pending', // change
+          saveError: null,
+          hasBeenHydrated: false,
+          metadata: {
+            dataVersion: 1, // change
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
+
+      // Fresh request (blue)
+      const freshPromise = manager.save({theme: 'blue'});
+
+      m = 'manager.state after fresh request starts';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          loadStatus: 'initial',
+          loadError: null,
+          saveStatus: 'pending', // still
+          saveError: null,
+          hasBeenHydrated: false,
+          metadata: {
+            dataVersion: 2, // change
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
+
+      adapter.pendingWrites[1]!.resolve({
+        config: {theme: 'blue'},
+        metadata: {dataVersion: 2, schemaVersion: 1},
+      });
+
+      m = 'Successful fresh request should not reject';
+      await assert.doesNotReject(freshPromise, m);
+
+      m = 'manager.state after fresh request succeeds';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          loadStatus: 'initial',
+          loadError: null,
+          saveStatus: 'success', // change
+          saveError: null,
+          hasBeenHydrated: true, // change
+          metadata: {
+            dataVersion: 2, // change
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
+
+      m = 'Store should stay at blue';
+      assert.strictEqual(manager.config.theme, 'blue', m);
+
+      adapter.pendingWrites[0]!.reject({err: 'Network error'});
+
+      m =
+        'Failed outdated request should NOT reject because we can safely ignore it because we have more recent data in store';
+      await assert.doesNotReject(outdatedPromise, m);
+
+      m = 'manager.state after outdated request fails';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          loadStatus: 'initial',
+          loadError: null,
+          saveStatus: 'success', // still
+          saveError: null,
+          hasBeenHydrated: true, // still
+          metadata: {
+            dataVersion: 2, // still
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
+
+      m = 'Store should stay at blue';
+      assert.strictEqual(manager.config.theme, 'blue', m);
+    });
+
+    it('Generic Error on LAST request, last request finishes second (in order)..', async () => {
+      m = 'manager.state initial';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          loadStatus: 'initial',
+          loadError: null,
+          saveStatus: 'initial',
+          saveError: null,
+          hasBeenHydrated: false,
+          metadata: {
+            dataVersion: 0,
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
+
+      // Outdated requests starts
+      const outdatedPromise = manager.save({theme: 'dark'});
+
+      m = 'manager.state after outdated request starts';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          loadStatus: 'initial',
+          loadError: null,
+          saveStatus: 'pending', // change
+          saveError: null,
+          hasBeenHydrated: false,
+          metadata: {
+            dataVersion: 1, // change
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
+
+      m = 'Store should optimistically accept dark from request A.';
+      assert.strictEqual(manager.config.theme, 'dark', m);
+
+      // Fresh request starts
+      const freshPromise = manager.save({theme: 'blue'});
+
+      m = 'manager.state after fresh request starts';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          loadStatus: 'initial',
+          loadError: null,
+          saveStatus: 'pending', // still
+          saveError: null,
+          hasBeenHydrated: false,
+          metadata: {
+            dataVersion: 2, // change
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
+
+      m = 'Store should optimistically accept blue from request B.';
+      assert.strictEqual(manager.config.theme, 'blue', m);
+
+      // Outdated request finishes successfully
+      adapter.pendingWrites[0]!.resolve({
+        config: {theme: 'dark'},
+        metadata: {dataVersion: 1, schemaVersion: 1},
+      });
+      await outdatedPromise;
+
+      m = 'manager.state after outdated request succeeds';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          loadStatus: 'initial',
+          loadError: null,
+          saveStatus: 'pending', // still, because a more recent request is pending
+          saveError: null,
+          hasBeenHydrated: false, // still
+          metadata: {
+            dataVersion: 2, // despite resolved as 1
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
+
+      m = 'Store should stay on blue.';
+      assert.strictEqual(manager.config.theme, 'blue', m);
+
+      // Fresh request fails
+      adapter.pendingWrites[1]!.reject({err: 'Network Timeout'});
+
+      m = 'Fresh promise should reject';
+      await assert.rejects(
+        freshPromise,
+        (e) => e && typeof e === 'object' && 'err' in e && e.err === 'Network Timeout',
+        m
+      );
+
+      m = 'manager.state after fresh request fails';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          loadStatus: 'initial',
+          loadError: null,
+          saveStatus: 'error', // change
+          saveError: {err: 'Network Timeout'}, // change
+          hasBeenHydrated: false, // still
+          metadata: {
+            dataVersion: 2, // still
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
+
+      m = 'Store should optimistically stay on blue';
+      assert.strictEqual(manager.config.theme, 'blue', m);
+    });
+
+    it('Generic Error on LAST request, last request finishes first (out of order)', async () => {
+      m = 'manager.state initial';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          loadStatus: 'initial',
+          loadError: null,
+          saveStatus: 'initial',
+          saveError: null,
+          hasBeenHydrated: false,
+          metadata: {
+            dataVersion: 0,
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
+
+      // Outdated request starts
+      const outdatedPromise = manager.save({theme: 'dark'});
+
+      m = 'manager.state after outdated request starts';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          loadStatus: 'initial',
+          loadError: null,
+          saveStatus: 'pending', // change
+          saveError: null,
+          hasBeenHydrated: false,
+          metadata: {
+            dataVersion: 1, // change
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
+
+      m = 'Store should optimistically accept dark from request A.';
+      assert.strictEqual(manager.config.theme, 'dark', m);
+
+      // Fresh request starts
+      const freshPromise = manager.save({theme: 'blue'});
+
+      m = 'manager.state after fresh request starts';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          loadStatus: 'initial',
+          loadError: null,
+          saveStatus: 'pending', // still
+          saveError: null,
+          hasBeenHydrated: false,
+          metadata: {
+            dataVersion: 2, // change
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
+
+      m = 'Store should optimistically accept blue from request B';
+      assert.strictEqual(manager.config.theme, 'blue', m);
+
+      // Fresh request finishes successfully
+      adapter.pendingWrites[1]!.resolve({
+        config: {theme: 'blue'},
+        metadata: {dataVersion: 2, schemaVersion: 1},
+      });
+      await freshPromise;
+
+      m = 'manager.state after fresh request succeeds';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          loadStatus: 'initial',
+          loadError: null,
+          saveStatus: 'success', // change
+          saveError: null,
+          hasBeenHydrated: true, // change
+          metadata: {
+            dataVersion: 2, // change
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
+
+      m = 'Store should stay on blue.';
+      assert.strictEqual(manager.config.theme, 'blue', m);
+
+      // Fresh request fails
+      adapter.pendingWrites[0]!.reject({err: 'Network Timeout'});
+
+      m = 'Outdated promise should NOT reject despite failure, since we have newer data already';
+      await assert.doesNotReject(outdatedPromise, m);
+
+      m = 'manager.state after fresh request succeeds';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          loadStatus: 'initial',
+          loadError: null,
+          saveStatus: 'success', // still
+          saveError: null,
+          hasBeenHydrated: true, // still
+          metadata: {
+            dataVersion: 2, // still
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
+
+      m = 'Store should optimistically stay on blue';
+      assert.strictEqual(manager.config.theme, 'blue', m);
+    });
+
+    it('Generic Error on BOTH requests, last request finishes first (out of order)', async () => {
+      m = 'manager.state initial';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          loadStatus: 'initial',
+          loadError: null,
+          saveStatus: 'initial',
+          saveError: null,
+          hasBeenHydrated: false,
+          metadata: {
+            dataVersion: 0,
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
+
+      // Outdated request starts
+      const outdatedPromise = manager.save({theme: 'dark'});
+
+      m = 'manager.state immediately after outdated request starts';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          loadStatus: 'initial',
+          loadError: null,
+          saveStatus: 'pending', // change
+          saveError: null,
+          hasBeenHydrated: false,
+          metadata: {
+            dataVersion: 1, // change
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
+
+      m = 'Store should optimistically accept dark from request A.';
+      assert.strictEqual(manager.config.theme, 'dark', m);
+
+      // Fresh request
+      const freshPromise = manager.save({theme: 'blue'});
+
+      m = 'manager.state immediately after fresh reqeust starts';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          loadStatus: 'initial',
+          loadError: null,
+          saveStatus: 'pending', // still
+          saveError: null,
+          hasBeenHydrated: false,
+          metadata: {
+            dataVersion: 2, // change
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
+
+      m = 'Store should optimistically accept blue from request B.';
+      assert.strictEqual(manager.config.theme, 'blue', m);
+
+      // Fresh request fails first
+      adapter.pendingWrites[1]!.reject({err: 'Network Timeout'});
+
+      m = 'Fresh promise should reject';
+      await assert.rejects(
+        freshPromise,
+        (e: unknown) => e && typeof e === 'object' && 'err' in e && e.err === 'Network Timeout',
+        m
+      );
+
+      m = 'manager.state after fresh reqeust fails';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          loadStatus: 'initial',
+          loadError: null,
+          saveStatus: 'error', // change
+          saveError: {err: 'Network Timeout'}, // change
+          hasBeenHydrated: false,
+          metadata: {
+            dataVersion: 2, // still
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
+
+      m = 'Store should stay on blue.';
+      assert.strictEqual(manager.config.theme, 'blue', m);
+
+      // Outdated request fails also
+      adapter.pendingWrites[0]!.reject({err: 'Network Timeout'});
+
+      m = "Outdated promise should NOT reject because we're on more recent data anyway";
+      await assert.doesNotReject(outdatedPromise, m);
+
+      m = 'manager.state after outdated reqeust fails';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          loadStatus: 'initial',
+          loadError: null,
+          saveStatus: 'error', // still
+          saveError: {err: 'Network Timeout'}, // still
+          hasBeenHydrated: false,
+          metadata: {
+            dataVersion: 2, // still
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
+
+      m = 'Store should optimistically stay on blue';
+      assert.strictEqual(manager.config.theme, 'blue', m);
+    });
+
+    it('Generic Error on BOTH requests, last request finishes last (in order order)', async () => {
+      m = 'manager.state initial';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          loadStatus: 'initial',
+          loadError: null,
+          saveStatus: 'initial',
+          saveError: null,
+          hasBeenHydrated: false,
+          metadata: {
+            dataVersion: 0,
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
+
+      // OUtdated request starts.
+      const outdatedPromise = manager.save({theme: 'dark'});
+
+      m = 'manager.state immediately after outdated reqeust starts';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          loadStatus: 'initial',
+          loadError: null,
+          saveStatus: 'pending', //change
+          saveError: null,
+          hasBeenHydrated: false,
+          metadata: {
+            dataVersion: 1, // change
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
+
+      m = 'Store should optimistically accept dark from request A.';
+      assert.strictEqual(manager.config.theme, 'dark', m);
+
+      const freshPromise = manager.save({theme: 'blue'});
+
+      m = 'manager.state immediately after fresh reqeust starts';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          loadStatus: 'initial',
+          loadError: null,
+          saveStatus: 'pending', // still
+          saveError: null,
+          hasBeenHydrated: false,
+          metadata: {
+            dataVersion: 2, // change
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
+
+      m = 'Store should optimistically accept blue from request B.';
+      assert.strictEqual(manager.config.theme, 'blue', m);
+
+      // Outdated request fails first
+      adapter.pendingWrites[0]!.reject({err: 'Network Timeout'});
+
+      m = "Outdated promise should NOT reject because we're on more recent data anyway";
+      await assert.doesNotReject(outdatedPromise, m);
+
+      m = 'manager.state after outdated reqeust fails';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          loadStatus: 'initial',
+          loadError: null,
+          saveStatus: 'pending', // still
+          saveError: null,
+          hasBeenHydrated: false,
+          metadata: {
+            dataVersion: 2, // still
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
+
+      m = 'Store should stay on blue.';
+      assert.strictEqual(manager.config.theme, 'blue', m);
+
+      // Fresh request fails also
+      adapter.pendingWrites[1]!.reject({err: 'Network Timeout'});
+
+      m = 'Outdated promise should reject';
+      await assert.rejects(
+        freshPromise,
+        (e: unknown) => e && typeof e === 'object' && 'err' in e && e.err === 'Network Timeout',
+        m
+      );
+
+      m = 'manager.state after fresh reqeust fails';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          loadStatus: 'initial',
+          loadError: null,
+          saveStatus: 'error', // change
+          saveError: {err: 'Network Timeout'}, // change
+          hasBeenHydrated: false,
+          metadata: {
+            dataVersion: 2, // still
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
+
+      m = 'Store should optimistically stay on blue';
       assert.strictEqual(manager.config.theme, 'blue', m);
     });
 
@@ -452,10 +1258,6 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
 
       // Start Save
       const savePromise = manager.save({theme: 'dark'});
-      const pending = adapter.pendingWrites.shift();
-
-      m = 'Reqeust exists';
-      assert.ok(pending, m);
 
       // Simulate Server Response from the Future (Schema v2)
       // The server processed the request but returned data formatted for v2
@@ -464,7 +1266,7 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
         metadata: {dataVersion: 2, schemaVersion: 2}, // v2 > v1
       };
 
-      pending.resolve(futureEnvelope);
+      adapter.pendingWrites[0]!.resolve(futureEnvelope);
 
       m = 'Should reject when receiving a higher schema version';
       await assert.rejects(
