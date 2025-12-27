@@ -11,8 +11,7 @@
       "dependsOn": []
     },
     "check-types": {
-      "dependsOn": [],
-      "outputs": ["dist/**/*.tsbuildinfo"]
+      "dependsOn": []
     },
     "test": {
       "dependsOn": [],
