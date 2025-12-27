@@ -4,7 +4,7 @@ import {z} from 'zod';
 import {ConfigManager} from './manager.js'; // The class to be implemented
 import type {AdapterEnvelope, ManagerState} from './types.js';
 import {BaseAdapter} from './adapters/base.js';
-import {createStore} from 'zustand';
+import {createStore} from 'zustand/vanilla';
 
 class MockAdapter extends BaseAdapter {
   state: AdapterEnvelope | undefined = undefined;

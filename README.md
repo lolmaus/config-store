@@ -1,8 +1,8 @@
 # @config-store
 
-A strict, schema-first config manager designed for long-lived frontend apps. It treats user settings as versioned data structures rather than loose JSON blobs, ensuring your application state remains consistent as your requirements evolve.
+A strict, schema-first config manager designed for long-lived frontend apps. It treats user settings as a versioned data structure rather than a loose JSON blob, ensuring your application state remains consistent as your requirements evolve.
 
-- **Universal Config:** Store user settings, feature flags, or any persistent client-state.
+- **Universal Config:** Store user settings, feature flags, or any persistent client-state in a centralized JSON-like structure.
 - **Zod-Powered:** The config is defined as a Zod schema, providing strict TypeScript inference across your codebase. Each setting can be anything from a `boolean` to a complex nested object. The Zod schema also provides defaults for each value.
 - **Atomic Persistence:** The config is stored and retrieved as a single JSON-like data structure.
 - **Migrations:** As your schema changes, define migration functions to automatically update a user's config to conform to the new schema. This process is transparent to the consuming app.
@@ -22,15 +22,19 @@ A strict, schema-first config manager designed for long-lived frontend apps. It 
     - [0. Roadmap](#0-roadmap)
     - [1. Installation](#1-installation)
     - [1.1. Core package](#11-core-package)
-    - [1.2. Use with React](#12-use-with-react)
+    - [1.2. In a React app](#12-in-a-react-app)
     - [1.3 Use with other frameworks](#13-use-with-other-frameworks)
     - [1.4. Version compatibility](#14-version-compatibility)
-    - [2. Quickstart](#2-quickstart)
+    - [2. React Quickstart](#2-react-quickstart)
+        - [2.0 Schema definition rules](#20-schema-definition-rules)
         - [2.1. Define the manager](#21-define-the-manager)
         - [2.2. Generate typed hooks](#22-generate-typed-hooks)
-        - [2.3. Wrap your app with the config provider](#23-wrap-your-app-with-the-config-provider)
+        - [2.3. Wrap your app with the config provider, load the config](#23-wrap-your-app-with-the-config-provider-load-the-config)
         - [2.4. Read config](#24-read-config)
         - [2.5. Persist config updates](#25-persist-config-updates)
+            - [2.5.1. Write the entire config into the store](#251-write-the-entire-config-into-the-store)
+            - [2.5.2. Update a specific value in the store with a mutator](#252-update-a-specific-value-in-the-store-with-a-mutator)
+            - [2.5.2. Customize the update function with a reducer](#252-customize-the-update-function-with-a-reducer)
     - [3. Defining a custom adapter](#3-defining-a-custom-adapter)
         - [3.1 The AsyncAdapter Helper](#31-the-asyncadapter-helper)
         - [3.2 Handling Concurrency (Race Conditions)](#32-handling-concurrency-race-conditions)
@@ -70,9 +74,9 @@ A strict, schema-first config manager designed for long-lived frontend apps. It 
         - [x] Run PR checks
         - [x] Release npm packages
     - [ ] lefthook for pre-commit checks
-    - [ ] Use Changesets
+    - [x] Use Changesets
         - [x] Configure
-        - [ ] Switch to per-package changelogs
+        - [x] Switch to per-package changelogs
 - [ ] Packages
     - [x] Core
         - [x] Adapters
@@ -95,21 +99,25 @@ A strict, schema-first config manager designed for long-lived frontend apps. It 
             - [x] Zustand store
             - [x] Retrieving config from the manager
             - [x] Updating config
-            - [x] Error handling
+            - [ ] Error handling
                 - [x] Concurrent requests from burst-clicking
                 - [x] Concurrent requests from different tabs/devices
                 - [x] Saved schema is higher than current latest schema
+                - [ ] Standardize all thrown errors
+                - [ ] Include Zod validation error into error message
         - [x] Barrel file `index.ts`
     - [ ] React
     - [ ] Docs app
 - [ ] Testing
     - [x] Unit tests
 - [ ] Documentation
-    - [x] Readme
+    - [ ] Readme
         - [x] Intro, rationalization
         - [x] Roadmap
-        - [x] Usage samples
+        - [x] Quickstart guide
         - [x] Adapter usage
+        - [ ] Loading state
+        - [ ] Error state and retrying
         - [x] FAQ
         - [x] Development
     - [ ] Docs app
@@ -136,11 +144,11 @@ bun add @config-store/core
 
 ⠀
 
-## 1.2. Use with React
+## 1.2. In a React app
 
 Additionally, install `@config-store/react`.
 
-Make sure you have React 18+.
+Make sure you're on React 18+.
 
 ⠀
 
@@ -158,22 +166,69 @@ If using previous versions of packages, mind version compatibility table:
 
 | Branch           | @config-store/core | @config-store/react |
 | ---------------- | ------------------ | ------------------- |
-| `gen0` (current) | >= 1.0.0-alpha.0   | >= 1.0.0-alpha.0    |
+| `gen0` (current) | >= 1.0.0           | >= 1.0.0            |
 
 ⠀
 
-## 2. Quickstart
+## 2. React Quickstart
+
+### 2.0 Schema definition rules
+
+`@config-store` relies on the Zod schema to provide default values.
+
+This means that the schema must be able to accept an empty initial value (e. g. `null` or `undefined`) and parse it into a default config.
+
+Here are some hints on how to achieve that:
+
+- If your adapter receives `undefined` as an empty initial value, then you must add [.prefault({})](https://zod.dev/api?id=prefaults) to your outmost `z.object()`.
+- If your adapter receives `null` as an empty initial value, then you must wrap the entire schema with [.preprocess()](https://zod.dev/api#preprocess), converting `null` into an empty object `{}`.
+- You must attach [.default()](https://zod.dev/api?id=defaults) to every primitive property.
+- You must attach [.optional()](https://zod.dev/api?id=optionals), [.nullable()](https://zod.dev/api?id=optionals), [.nullish()](https://zod.dev/api?id=optionals) or (recommended) to the root `z.object()`.
+
+Here's an example of a schema that accepts `undefined`:
+
+```ts
+const MySettingsSchema = z
+    .object({
+        menuExpanded: z.boolean().default(true),
+        darkTheme: z.boolean().default(false),
+
+        nestedSettings: z
+            .object({
+                foo: z.string().default('bar'),
+            })
+            .prefault({}),
+    })
+    .prefault({}); // Converts initial `undefined` value to `{}`
+
+MySettingsSchema.parse(undefined); // => {menuExpanded: true, darkeTheme: false}
+```
+
+Here's an example of a schema that accepts `null`:
+
+```ts
+const MySettingsSchema = z.preprocess(
+    (config: unknown) => config ?? {}, // Converts initial `null` or `undefined` value to `{}`
+    z.object({
+        menuExpanded: z.boolean().default(true),
+        darkTheme: z.boolean().default(false),
+
+        nestedSettings: z
+            .object({
+                foo: z.string().default('bar'),
+            })
+            .prefault({}),
+    })
+);
+
+MySettingsSchema.parse(undefined); // => {menuExpanded: true, darkeTheme: false}
+```
 
 ### 2.1. Define the manager
 
 In e. g. `src/settings/manager.ts`, instantiate the adapter and pass it to the `ConfigManager`.
 
 Chain `.addVersion()` to define your schema history.
-
-⚠️ Important: the Zod schema is used as the source of truth for config defaults. It should be able to handle `undefined` as input and produce a valid default config. For this to be possible:
-
-- You must provide [.default()](https://zod.dev/api?id=defaults) values for every property in your schema.
-- You must attach [.optional()](https://zod.dev/api?id=optionals), [.nullable()](https://zod.dev/api?id=optionals), [.nullish()](https://zod.dev/api?id=optionals) or [.prefault({})](https://zod.dev/api?id=prefaults) (recommended) to the root `z.object()`.
 
 ```ts
 import {ConfigManager, LocalStorageAdapter, type InferConfig} from '@config-store/core';
@@ -197,7 +252,7 @@ export const configManager = ConfigManager
             .prefault({}),
     })
 
-    // Add schema version 2
+    // Add schema version 2 as your settings evolve
     .addVersion({
         version: 2,
         schema: z
@@ -209,9 +264,11 @@ export const configManager = ConfigManager
             .prefault({}),
 
         migration: (prev) => {
-            // TypeScript automatically infers 'prev' as the previous version 💎
+            // TypeScript automatically infers 'prev' as the previous version 😙👌
             return {
-                menuExpanded: prev.menuExpanded,
+                ...prev,
+
+                // Migrating the theme setting from boolean to string
                 theme: prev.darkTheme ? 'dark' : 'light',
             };
         },
@@ -231,24 +288,29 @@ In e. g. `src/settings/hooks.ts`, make versions of hooks `useConfig` and `useUpd
 import {createHooks} from '@config-store/react';
 import type {MySettings} from './manager';
 
-export const {useConfig, useUpdateConfig} = createHooks<MySettings>();
+export const {useConfig, useUpdateConfig, useUpdateConfigReducer} = createHooks<MySettings>();
 ```
 
 ⠀
 
-### 2.3. Wrap your app with the config provider
+### 2.3. Wrap your app with the config provider, load the config
 
 Pass your `configManager` instance into the `manager` prop of the provider.
 
 ```tsx
-import {ConfigProvider} from '@config-store/core';
+import {ConfigProvider} from '@config-store/react';
 import {configManager} from './settings/manager';
 
-export const App = () => (
-    <ConfigProvider value={configManager}>
-        <Dashboard />
-    </ConfigProvider>
-);
+export const App = () => {
+    // Fetch settings when the app is initially loaded
+    configManager.load();
+
+    return (
+        <ConfigProvider value={configManager}>
+            <Dashboard />
+        </ConfigProvider>
+    );
+};
 ```
 
 ⠀
@@ -275,21 +337,95 @@ export const PageWrapper = ({children}) => {
 
 ### 2.5. Persist config updates
 
-Use the `useUpdateConfig` hook to update user settings and persist them:
+`@config-store/react` provides three ways of updating the store
+
+#### 2.5.1. Write the entire config into the store
 
 ```tsx
 import {useUpdateConfig} from 'my-app/settings/hooks';
 
 export const ThemeToggler = () => {
+    const config = useConfig();
     const {update} = useUpdateConfig();
 
-    // Assuming this will be user input
-    const newPartialConfig = {theme: 'dark'};
+    // This is the value we're gonna write to the store
+    const [userInput] = useState<'light' | 'dark'>(config.theme);
+
+    const updatedConfig: MySettings = {
+        ...config,
+        theme: userInput,
+    };
+
+    const clickHandler = () => update(updatedConfig);
 
     return (
         <div>
-            <button onClick={() => update(newPartialConfig)}>Switch to Dark Mode</button>
+            <button onClick={clickHandler}>Switch to Dark Mode</button>
         </div>
+    );
+};
+```
+
+#### 2.5.2. Update a specific value in the store with a mutator
+
+```tsx
+import {useUpdateConfig} from 'my-app/settings/hooks';
+
+export const ThemeToggler = () => {
+    // Selector selects a specific property on the config
+    const theme = useConfig((c) => c.theme);
+
+    // This is the value we're gonna write to the store
+    const [userInput] = useState<'light' | 'dark'>(config.theme);
+
+    const {update} = useUpdateConfig();
+
+    const clickHandler = () => {
+        // Pass a mutator callback into the `update`
+        update((config) => ({
+            ...config,
+            theme: userInput,
+        }));
+    };
+
+    return (
+        <div>
+            <button onClick={clickHandler}>Switch to Dark Mode</button>
+        </div>
+    );
+};
+```
+
+#### 2.5.2. Customize the update function with a reducer
+
+`useUpdateConfigReducer` lets you preconfigure the `update` function to receive a narrow value.
+
+In this example, we're setting it up to receive the theme value typed as `'light' | 'dark'`.
+
+This lets us pass the `update` function directly into Select's `onChange`, without having to wrap `update` with a handle callback like in the previous example.
+
+```tsx
+import {useUpdateConfigReducer} from 'my-app/settings/hooks';
+
+export const ThemeToggler = () => {
+    // Selector selects a specific property on the config
+    const theme = useConfig((c) => c.theme);
+
+    // This is the value we're gonna write to the store
+    const [userInput] = useState<'light' | 'dark'>(config.theme);
+
+    // Preconfigure the update function to receive a theme value
+    const {update} = useUpdateConfigReducer<'light' | 'dark'>((config, theme) => ({
+        ...config,
+        theme,
+    }));
+
+    return (
+        <label>
+            <span>Theme</span>
+
+            <Select options={['light', 'dark']} selectedOption={theme} onChange={update} />
+        </label>
     );
 };
 ```
@@ -311,7 +447,7 @@ We provide a helper class `AsyncAdapter` that handles this heavy lifting for you
 In e. g. `src/settings/adapter.ts`:
 
 ```ts
-import {AsyncAdapter} from '@config-store/core';
+import {AsyncAdapter, AdapterEnvelopeSchema} from '@config-store/core';
 
 export const apiAdapter = new AsyncAdapter({
     // Choose how to handle concurrent save requests
@@ -324,8 +460,8 @@ export const apiAdapter = new AsyncAdapter({
 
         const json = await res.json();
 
-        // Assuming server returns: { data: { config, metadata } }
-        return json.data;
+        // Assuming server returns { data: { config, metadata } }
+        return AdapterEnvelopeSchema.parse(json?.data);
     },
 
     // WRITE receives the opaque metadata blob from the manager
@@ -348,8 +484,8 @@ export const apiAdapter = new AsyncAdapter({
         // Optional: Return updated metadata/settings from server response
         const json = await res.json();
 
-        // Assuming server returns: { data: { config, metadata } }
-        return json.data;
+        // Assuming server returns { data: { config, metadata } }
+        return AdapterEnvelopeSchema.parse(json?.data);
     },
 
     onWriteError: (error) => {
@@ -487,7 +623,7 @@ Note: A config store update triggered by the adapter's return value will not tri
 import {useUpdateConfig} from '@config-store/react';
 
 export const ThemeToggler = () => {
-    const {update, isSaving} = useUpdateConfig();
+    const {update, isPending} = useUpdateConfig();
 
     const toggle = async (newTheme: string) => {
         try {
@@ -503,7 +639,7 @@ export const ThemeToggler = () => {
 
     return (
         <div>
-            <button onClick={toggle}>{isSaving ? 'Saving...' : 'Switch to Dark Mode'}</button>
+            <button onClick={toggle}>{isPending ? 'Saving...' : 'Switch to Dark Mode'}</button>
             {error && <span className="error">Save failed!</span>}
         </div>
     );
@@ -524,7 +660,9 @@ If you know what you're doing, you _can_ bridge them using `queryClient.fetchQue
 
 ### 4.2 Why does the library depend on Zustand?
 
-We use `zustand/vanilla` internally as a micro-dependency (<1kb) to provide a robust implementation of `useSyncExternalStore` and selector support (`useConfig(s => s.theme)`). This prevents unnecessary re-renders that would occur with standard React Context.
+The `@config-store/core` package uses `zustand/vanilla` internally as a micro-dependency (<1kb) for the underlying store. The `@config-store/react` package uses `zustand`.
+
+Zustand is required provide a robust store implementation with selector support, e. g. `useConfig(s => s.theme)`. This prevents unnecessary re-renders that would occur with standard React Context. For example, if a component relies on property A to render, then changes to property B should not cause the component to rerender.
 
 ⠀
 
