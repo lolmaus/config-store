@@ -40,3 +40,6 @@ yarn-error.log*
 
 # IDE
 .history/
+
+# Yalc artifacts
+.yalc/
