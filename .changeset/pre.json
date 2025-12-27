@@ -10,6 +10,7 @@
     "@config-store/typescript-config": "0.0.0"
   },
   "changesets": [
+    "clever-hairs-count",
     "forty-glasses-yawn"
   ]
 }
