@@ -5,7 +5,12 @@ export abstract class BaseAdapter {
   /**
    * Retrieves the current settings and optional metadata.
    */
-  abstract read(): AdapterEnvelope | void | Promise<AdapterEnvelope | void>;
+  abstract read():
+    | AdapterEnvelope
+    | null
+    | undefined
+    | void
+    | Promise<AdapterEnvelope | null | undefined | void>;
 
   /**
    * Persists changes.
@@ -16,7 +21,7 @@ export abstract class BaseAdapter {
   abstract write(
     nextConfig: unknown,
     metadata: ManagerMetadata
-  ): AdapterEnvelope | void | Promise<AdapterEnvelope | void>;
+  ): AdapterEnvelope | null | undefined | void | Promise<AdapterEnvelope | null | undefined | void>;
 
   /**
    * Optional hook for handling errors (logging, toasts, etc).

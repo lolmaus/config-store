@@ -3,7 +3,7 @@ import type {BaseAdapter} from './adapters/base.js';
 import {
   type AdapterEnvelope,
   type ManagerState,
-  type ManagerLoadStatus,
+  type ManagerRequestStatus,
   type ManagerMetadata,
   type VersionDef,
 } from './types.js';
@@ -105,7 +105,7 @@ export class ConfigManager<TCurrent = undefined> {
     return this.state.hasBeenHydrated;
   }
 
-  get loadStatus(): ManagerLoadStatus {
+  get loadStatus(): ManagerRequestStatus {
     return this.state.loadStatus;
   }
 
@@ -155,7 +155,7 @@ export class ConfigManager<TCurrent = undefined> {
   async load(): Promise<void> {
     this.setLoadStatus('pending');
 
-    let incomingEnvelope: AdapterEnvelope | void;
+    let incomingEnvelope: AdapterEnvelope | null | undefined | void;
 
     try {
       incomingEnvelope = await this.adapter.read();
@@ -182,7 +182,7 @@ export class ConfigManager<TCurrent = undefined> {
 
     this.setConfig(config);
 
-    let responseEnvelope: AdapterEnvelope | void;
+    let responseEnvelope: AdapterEnvelope | null | undefined | void;
 
     try {
       // 3. Attempt Persistence
@@ -260,7 +260,7 @@ export class ConfigManager<TCurrent = undefined> {
   }
 
   protected migrate(
-    initialEnvelope: AdapterEnvelope | void,
+    initialEnvelope: AdapterEnvelope | null | undefined | void,
     metadata: ManagerMetadata
   ): AdapterEnvelope<TCurrent> {
     if (!initialEnvelope) return this.getDefaultEnvelope(metadata);

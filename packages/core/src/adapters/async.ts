@@ -4,7 +4,7 @@ import type {AdapterEnvelope, ManagerMetadata} from '../types.js';
 export type ConcurrencyStrategy = 'abort' | 'sequential';
 
 export interface AsyncAdapterOptions {
-  read: () => Promise<AdapterEnvelope>;
+  read: () => Promise<AdapterEnvelope | null | undefined | void>;
 
   /**
    * Persists settings.
@@ -12,9 +12,9 @@ export interface AsyncAdapterOptions {
   write: (
     nextConfig: unknown,
     lastCommittedConfig: unknown | undefined,
-    metadata: ManagerMetadata | undefined,
+    metadata: ManagerMetadata,
     signal?: AbortSignal
-  ) => Promise<AdapterEnvelope | void>;
+  ) => Promise<AdapterEnvelope | null | undefined | void>;
 
   onReadError?: (error: unknown) => void;
   onWriteError?: (error: unknown) => void;
@@ -52,8 +52,8 @@ export class AsyncAdapter extends BaseAdapter {
     }
   }
 
-  async read(): Promise<AdapterEnvelope> {
-    let envelope: AdapterEnvelope;
+  async read(): Promise<AdapterEnvelope | null | undefined | void> {
+    let envelope: AdapterEnvelope | null | undefined | void;
     try {
       envelope = await this.options.read();
     } catch (e) {
@@ -62,12 +62,15 @@ export class AsyncAdapter extends BaseAdapter {
     }
 
     // Initialize our anchor point from the server's truth
-    this.lastCommitted = envelope.config;
+    this.lastCommitted = envelope?.config;
 
     return envelope;
   }
 
-  async write(nextConfig: unknown, metadata: ManagerMetadata): Promise<AdapterEnvelope | void> {
+  async write(
+    nextConfig: unknown,
+    metadata: ManagerMetadata
+  ): Promise<AdapterEnvelope | null | undefined | void> {
     const {concurrency = 'abort'} = this.options;
 
     try {
@@ -85,9 +88,9 @@ export class AsyncAdapter extends BaseAdapter {
 
   protected async executeWrite(
     nextConfig: unknown,
-    metadata: ManagerMetadata | undefined,
+    metadata: ManagerMetadata,
     strategy: ConcurrencyStrategy
-  ): Promise<AdapterEnvelope | void> {
+  ): Promise<AdapterEnvelope | null | undefined | void> {
     const runWrite = async (signal?: AbortSignal) => {
       // 1. Pass 'this.lastCommitted' (Server Truth) to the user
       const result = await this.options.write(nextConfig, this.lastCommitted, metadata, signal);

@@ -3,7 +3,7 @@ export {ConfigManager} from './manager.js';
 
 // Types
 export type {
-  ManagerLoadStatus as ManagerStatus,
+  ManagerRequestStatus as ManagerStatus,
   ManagerState,
   ManagerMetadata,
   AdapterEnvelope,

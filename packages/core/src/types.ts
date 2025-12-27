@@ -4,7 +4,7 @@ import type {ConfigManager} from './manager.js';
 /**
  * Lets you track the loading state of the ConfigManager
  */
-export type ManagerLoadStatus = 'initial' | 'pending' | 'success' | 'error';
+export type ManagerRequestStatus = 'initial' | 'pending' | 'success' | 'error';
 
 /**
  * Shape of the state object, exposed as a Zustand store for reactivity
@@ -15,7 +15,7 @@ export interface ManagerState<TConfig> {
   readonly hasBeenHydrated: boolean;
 
   // Load state
-  readonly loadStatus: ManagerLoadStatus;
+  readonly loadStatus: ManagerRequestStatus;
   readonly loadError: unknown | null;
   readonly isLoadInitial: boolean;
   readonly isLoadPending: boolean;
@@ -23,7 +23,7 @@ export interface ManagerState<TConfig> {
   readonly isLoadError: boolean;
 
   // Save state
-  readonly saveStatus: ManagerLoadStatus;
+  readonly saveStatus: ManagerRequestStatus;
   readonly saveError: unknown | null;
   readonly isSaveInitial: boolean;
   readonly isSavePending: boolean;
@@ -34,24 +34,15 @@ export interface ManagerState<TConfig> {
 /**
  * Base type for metadata
  */
-export const MetadataSchema = z.object({
-  dataVersion: z.number(),
-  schemaVersion: z.number(),
-});
+export interface ManagerMetadata {
+  dataVersion: number;
+  schemaVersion: number;
+}
 
-/**
- * The Strict Contract for adapter read
- */
-export type ManagerMetadata = z.infer<typeof MetadataSchema>;
-
-export const AdapterEnvelopeSchema = z.object({
-  config: z.unknown(),
-  metadata: MetadataSchema,
-});
-
-export type AdapterEnvelope<TCurrent = unknown> = z.infer<typeof AdapterEnvelopeSchema> & {
+export interface AdapterEnvelope<TCurrent = unknown> {
   config: TCurrent;
-};
+  metadata: ManagerMetadata;
+}
 
 /**
  * Descriptor of a schema version
@@ -66,3 +57,13 @@ export interface VersionDef<TPrev, TNext> {
  * Helper to infer the Config type from the Manager instance
  */
 export type InferConfig<T> = T extends ConfigManager<infer C> ? C : never;
+
+export const MetadataSchema = z.object({
+  dataVersion: z.number(),
+  schemaVersion: z.number(),
+}) satisfies z.ZodType<ManagerMetadata>;
+
+export const AdapterEnvelopeSchema = z.object({
+  config: z.unknown(),
+  metadata: MetadataSchema,
+}) satisfies z.ZodType<AdapterEnvelope>;

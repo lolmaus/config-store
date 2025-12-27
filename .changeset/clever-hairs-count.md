@@ -29,9 +29,12 @@ Improve error handling and retries when loading.
         - load states: `loadStatus`, `loadError`, `isLoadInitial`, `isLoadPending`, `isLoadSuccess`, `isLoadError`;
         - save states: `saveStatus`, `saveError`, `isSaveInitial`, `isSavePending`, `isSaveSuccess`, `isSaveError`.
     - No longer reverts to older state on network error. This was bad UX. Now the manager remains on latest settings version.
+    - Renamed `ManagerStatus` to `ManagerRequestStatus`, in order to distinguish from `ManagerState`.
 
 - `AsyncAdapter`:
     - Added `onReadError` to `AsyncAdapterOptions`.
+    - `read` and `write` methods of `AsyncAdapterOptions` are now expected to return `Promise<AdapterEnvelope | null | undefined | void>`.
+    - `read` and `write` methods of `AsyncAdapterOptions` always receive `ManagerMetadata`.
 
 - `LocalStorageAdapter`
     - No longer swallows the error, allowing the manager to handle failures.
