@@ -3,8 +3,6 @@
   "compilerOptions": {
     "composite": false,
     "noEmit": true,
-    "incremental": true,
-    "tsBuildInfoFile": "./dist/tsconfig.test.tsbuildinfo",
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {

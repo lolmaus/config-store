@@ -4,8 +4,6 @@
     "outDir": "dist",
     "composite": false,
     "noEmit": true,
-    "incremental": true,
-    "tsBuildInfoFile": "./dist/tsconfig.build.tsbuildinfo",
     "types": []
   },
   "include": ["src/**/*"],

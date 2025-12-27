@@ -43,3 +43,4 @@ yarn-error.log*
 
 # Yalc artifacts
 .yalc/
+yalc.lock

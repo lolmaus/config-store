@@ -1,9 +1,7 @@
 {
   "extends": "@config-store/typescript-config/node-test.json",
   "compilerOptions": {
-    "noEmit": true,
-    "incremental": true,
-    "tsBuildInfoFile": "./dist/tsconfig.test.tsbuildinfo"
+    "noEmit": true
   },
   "include": ["src/**/*"]
 }
