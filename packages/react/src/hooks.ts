@@ -1,113 +1,153 @@
-import {useContext, useState, useCallback} from 'react';
+import {useContext, useCallback} from 'react';
 // We use the 'useStore' hook from zustand to subscribe to the vanilla store exposed by core.
 // This handles useSyncExternalStore + Selectors automatically.
 import {useStore} from 'zustand';
+import {useShallow} from 'zustand/shallow';
 import {ConfigContext} from './context.js';
+import type {ManagerState, ConfigManager} from '@config-store/core';
+import type {
+  UseUpdateConfigResult,
+  ConfigMutator,
+  ConfigReducer,
+  UseUpdateConfigReducerResult,
+  ConfigSelector,
+} from './types.js';
 
 /**
- * Hook to read the configuration.
+ * Hook to read the config.
  *
- * @example
- * // Get full config
- * const config = useConfig<AppConfig>();
+ * - If no selector is passed, it returns the entire config object.
+ * - If a selector is passed, it returns the specific slice and prevents unnecessary rerenders.
  *
- * @example
- * // Select a specific value (renders optimized)
- * const theme = useConfig<AppConfig, string>((state) => state.theme);
+ * Use with `createHooks` to avoid passing the `TConfig` generic explicitly.
  */
-export function useConfig<T, TSlice = T>(selector?: (state: T) => TSlice): TSlice {
-  const manager = useContext(ConfigContext);
+export function useConfig<TConfig>(): TConfig;
+export function useConfig<TConfig, TSelected>(
+  selector: (config: TConfig, state: ManagerState<TConfig>) => TSelected
+): TSelected;
+export function useConfig<TConfig, TSelected>(
+  selector?: ConfigSelector<TConfig, TSelected>
+): TConfig | TSelected {
+  const manager = useContext(ConfigContext) as ConfigManager<TConfig>;
 
   if (!manager) {
     throw new Error('[@config-store/react] useConfig must be used within a <ConfigProvider>');
   }
 
-  if (!manager.configStore) {
+  if (!manager.store) {
     throw new Error(
       '[@config-store/react] The ConfigManager must have a version defined before using useConfig'
     );
   }
 
-  // We cast the store to the generic T provided by the user.
-  // This is safe because the user ensures the Manager<T> passed to Provider matches T here.
-  return useStore(manager.configStore, selector as (state: unknown) => TSlice) as TSlice;
-}
-
-export interface UseUpdateConfigResult<T> {
-  /**
-   * Updates the configuration.
-   * If the config is an object, the input is merged (shallowly).
-   * If the config is a primitive, the input replaces the value.
-   */
-  update: (partial: Partial<T>) => Promise<void>;
-  isSaving: boolean;
-  error: Error | null;
+  return useStore(manager.store, (state) => {
+    if (selector) {
+      return selector(state.config, state);
+    }
+    // If no selector is provided, we return the whole config.
+    // We cast to TSelected (which acts as the return type union) to satisfy the implementation signature.
+    return state.config as unknown as TSelected;
+  });
 }
 
 /**
  * Hook to update the configuration.
+ * Supports direct replacement or inline mutation functions.
  */
-export function useUpdateConfig<T>(): UseUpdateConfigResult<T> {
-  const manager = useContext(ConfigContext);
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
+export function useUpdateConfig<TConfig>(): UseUpdateConfigResult<TConfig> {
+  const manager = useContext(ConfigContext) as ConfigManager<TConfig>;
 
   if (!manager) {
     throw new Error('[@config-store/react] useUpdateConfig must be used within a <ConfigProvider>');
   }
 
   const update = useCallback(
-    async (partial: Partial<T>) => {
-      setIsSaving(true);
-      setError(null);
+    async (configOrMutator: TConfig | ConfigMutator<TConfig>) => {
+      let newConfig: TConfig;
 
-      try {
-        const current = manager.config as T;
-
-        let nextConfig: T;
-
-        // Smart Merge:
-        // If current state is an object (and not null), we treat 'partial' as a subset to merge.
-        // Otherwise (primitives), we treat 'partial' as the new value.
-        if (typeof current === 'object' && current !== null && !Array.isArray(current)) {
-          nextConfig = {
-            ...current,
-            ...partial,
-          };
-        } else {
-          // It's a primitive or array, so we assume the partial is actually the full new value
-          // We use 'as T' because Partial<Primitive> is just Primitive.
-          nextConfig = partial as T;
-        }
-
-        await manager.save(nextConfig);
-      } catch (err) {
-        if (err instanceof Error) {
-          setError(err);
-        } else {
-          setError(new Error('Unknown error during config update'));
-        }
-        throw err;
-      } finally {
-        setIsSaving(false);
+      if (typeof configOrMutator === 'function') {
+        const state = manager.store.getState();
+        // We assume TConfig is not a function type based on library constraints
+        const mutator = configOrMutator as ConfigMutator<TConfig>;
+        newConfig = mutator(state.config, state);
+      } else {
+        newConfig = configOrMutator;
       }
+
+      return await manager.save(newConfig);
     },
     [manager]
   );
 
-  return {update, isSaving, error};
+  const state = useStore(
+    manager.store,
+    useShallow((state) => ({
+      isInitial: state.isSaveInitial,
+      isPending: state.isSavePending,
+      isSuccess: state.isSaveSuccess,
+      isError: state.isSaveError,
+      status: state.saveStatus,
+      error: state.saveError,
+    }))
+  );
+
+  return {update, ...state};
+}
+
+/**
+ * Hook to update the configuration using a Reducer pattern.
+ * Best for complex logic or reusable actions.
+ */
+export function useUpdateConfigReducer<TConfig, TPayload>(
+  reducer: ConfigReducer<TConfig, TPayload>
+): UseUpdateConfigReducerResult<TConfig, TPayload> {
+  const manager = useContext(ConfigContext) as ConfigManager<TConfig>;
+
+  if (!manager) {
+    throw new Error(
+      '[@config-store/react] useUpdateConfigReducer must be used within a <ConfigProvider>'
+    );
+  }
+
+  const update = useCallback(
+    async (payload: TPayload) => {
+      const state = manager.store.getState();
+      const newConfig = reducer(state.config, payload, state);
+      return await manager.save(newConfig);
+    },
+    [manager, reducer]
+  );
+
+  const state = useStore(
+    manager.store,
+    useShallow((state) => ({
+      isInitial: state.isSaveInitial,
+      isPending: state.isSavePending,
+      isSuccess: state.isSaveSuccess,
+      isError: state.isSaveError,
+      status: state.saveStatus,
+      error: state.saveError,
+    }))
+  );
+
+  return {update, ...state};
 }
 
 /**
  * Creates a set of typed hooks bound to your specific Config type.
- * This avoids the need to manually pass generic types to useConfig every time.
- *
- * @example
- * export const { useConfig, useUpdateConfig } = createHooks<MyConfig>();
  */
-export function createHooks<T>() {
+export function createHooks<TConfig>() {
   return {
-    useConfig: <TSlice = T>(selector?: (state: T) => TSlice) => useConfig<T, TSlice>(selector),
-    useUpdateConfig: () => useUpdateConfig<T>(),
+    useConfig: <TSelected = TConfig>(
+      selector?: (config: TConfig, state: ManagerState<TConfig>) => TSelected
+    ): TSelected => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return useConfig<TConfig, TSelected>(selector as any);
+    },
+
+    useUpdateConfig: () => useUpdateConfig<TConfig>(),
+
+    useUpdateConfigReducer: <TPayload>(reducer: ConfigReducer<TConfig, TPayload>) =>
+      useUpdateConfigReducer<TConfig, TPayload>(reducer),
   };
 }
