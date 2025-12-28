@@ -4,7 +4,6 @@ A strict, schema-first config manager designed for long-lived frontend apps. It 
 
 - **Universal Config:** Store user settings, feature flags, or any persistent client-state in a centralized JSON-like structure.
 - **Zod-Powered:** The config is defined as a Zod schema, providing strict TypeScript inference across your codebase. Each setting can be anything from a `boolean` to a complex nested object. The Zod schema also provides defaults for each value.
-- **Atomic Persistence:** The config is stored and retrieved as a single JSON-like data structure.
 - **Migrations:** As your schema changes, define migration functions to automatically update a user's config to conform to the new schema. This process is transparent to the consuming app.
 - **Fail-Safe:** Malformed configs that cannot be migrated are swapped with schema defaults and overwrite the invalid data on the next save.
 - **Flexible Adapters:** Ships with a `LocalStorageAdapter` and a robust `AsyncAdapter` (for REST APIs). You can easily define custom adapters for other protocols (e.g., WebSocket, IndexedDB).
@@ -180,12 +179,12 @@ This means that the schema must be able to accept an empty initial value (e. g. 
 
 Here are some hints on how to achieve that:
 
-- If your adapter receives `undefined` as an empty initial value, then you must add [.prefault({})](https://zod.dev/api?id=prefaults) to your outmost `z.object()`.
+- If your adapter receives `undefined` as an empty initial value, then you must attach [.prefault({})](https://zod.dev/api?id=prefaults) to your outmost `z.object()`.
 - If your adapter receives `null` as an empty initial value, then you must wrap the entire schema with [.preprocess()](https://zod.dev/api#preprocess), converting `null` into an empty object `{}`.
 - You must attach [.default()](https://zod.dev/api?id=defaults) to every primitive property.
-- You must attach [.optional()](https://zod.dev/api?id=optionals), [.nullable()](https://zod.dev/api?id=optionals), [.nullish()](https://zod.dev/api?id=optionals) or (recommended) to the root `z.object()`.
+- You must attach [.prefault({})](https://zod.dev/api?id=prefaults) to every nested object.
 
-Here's an example of a schema that accepts `undefined`:
+Here's an example of a schema that can handle an `undefined` initial value:
 
 ```ts
 const MySettingsSchema = z
@@ -204,7 +203,7 @@ const MySettingsSchema = z
 MySettingsSchema.parse(undefined); // => {menuExpanded: true, darkeTheme: false}
 ```
 
-Here's an example of a schema that accepts `null`:
+Here's an example of a schema that can handle a `null` or `undefined` initial value:
 
 ```ts
 const MySettingsSchema = z.preprocess(
@@ -460,6 +459,7 @@ export const apiAdapter = new AsyncAdapter({
 
         const json = await res.json();
 
+        // To be type-safe, we must parse the backend payload with Zod
         // Assuming server returns { data: { config, metadata } }
         return AdapterEnvelopeSchema.parse(json?.data);
     },
@@ -484,6 +484,7 @@ export const apiAdapter = new AsyncAdapter({
         // Optional: Return updated metadata/settings from server response
         const json = await res.json();
 
+        // To be type-safe, we must parse the backend payload with Zod
         // Assuming server returns { data: { config, metadata } }
         return AdapterEnvelopeSchema.parse(json?.data);
     },
