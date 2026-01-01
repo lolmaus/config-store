@@ -1,0 +1,65 @@
+---
+title: '@lolmaus/config-store'
+description: Get started building your docs site with Starlight.
+template: splash # Remove or comment out this line to display the site sidebar on this page.
+hero:
+  tagline: A schema-first frontend setting manager with blackjack and migrations!
+  image:
+    file: ../../assets/houston.webp
+  actions:
+    - text: Documentation
+      link: /guides/installation/
+      icon: right-arrow
+    - text: GitHub
+      link: https://github.com/lolmaus/config-store
+      icon: external
+      variant: minimal
+---
+
+import {Card, CardGrid} from '@astrojs/starlight/components';
+
+## Features
+
+<CardGrid stagger>
+  <Card title="Universal Config" icon="seti:json">
+    Store user settings feature flags or any persistent client-state in a centralized JSON-like
+    structure.
+  </Card>
+  <Card title="Zod-Powered" icon="seti:zig">
+    The config is defined as a [Zod](https://zod.dev) schema, providing strict TypeScript inference
+    across your codebase. Each setting can be anything from a `boolean` to a complex nested object.
+    The Zod schema also provides defaults for each value.
+  </Card>
+  <Card title="Migrations" icon="seti:puppet">
+    As your schema changes, define migration functions to automatically update a user's config to
+    conform to the new schema. This process is transparent to the consuming app.{' '}
+  </Card>
+  <Card title="Flexible Adapters" icon="cloud-download">
+    Ships with a simple `LocalStorageAdapter` and a versatile `AsyncAdapter` (e. g. for REST APIs).
+    You can easily define custom adapters for other protocols (e.g., WebSocket, IndexedDB).
+  </Card>
+  <Card title="Concurrency Control" icon="seti:clock">
+    The `AsyncAdapter` provides three strategies for parallel writes:
+    <ul>
+      <li>**abort**: Cancels previous pending requests (default, relies on AbortController).</li>
+      <li>
+        **optimistic concurrency control**: On top of the **abort** strategy, your backend can emit
+        `409 Conflict` on an attempt to overwrite an newer config version with a newer one.
+      </li>
+      <li>
+        **sequential**: Waits for each update to finish before processing the next one. Updates pile
+        up in a queue. Useful for legacy backends, at the cost of UX.
+      </li>
+    </ul>
+  </Card>
+  <Card title="Framework-agnostic" icon="seti:react">
+    The core can be used with vanilla JS or in any framework.
+
+    The following framework integrations are available:
+
+    <ul><li>**React**: Provides hooks like `useConfig` and `useUpdateConfig`. Makes sure your components rerender only when the relevant individual settings change. Unrelated changes to the config will not cause rerenders.</li></ul>
+
+    Support for other frameworks is not planned, but contributions are very welcome.
+
+  </Card>
+</CardGrid>
