@@ -77,17 +77,17 @@ A strict, schema-first config manager designed for long-lived frontend apps. It 
         - [x] Configure
         - [x] Switch to per-package changelogs
 - [ ] Packages
-    - [x] Core
-        - [x] Adapters
+    - [ ] Core
+        - [ ] Adapters
             - [x] Base
             - [x] Local Storage
-            - [x] Async
+            - [ ] Async
                 - [x] ~~Debouncing~~
                 - [x] AbortSignal
-                - [x] Concurrency
-                    - [x] Default (relies on AbortSignal)
-                    - [x] dataVersion
-                    - [x] sequential
+                - [ ] Concurrency
+                    - [x] Abort (default)
+                    - [ ] Optimistic Concurrency Control
+                    - [x] Sequential
         - [x] Config Manger
             - [x] Schema definition via Zod
             - [x] `addVersion` / Schema History API
@@ -105,8 +105,21 @@ A strict, schema-first config manager designed for long-lived frontend apps. It 
                 - [ ] Standardize all thrown errors
                 - [ ] Include Zod validation error into error message
         - [x] Barrel file `index.ts`
-    - [ ] React
+    - [x] React
     - [ ] Docs app
+        - [ ] Implement
+        - [ ] Migrate documentation
+            - [x] Installation
+            - [x] Schema Definition
+            - [x] React Quickstart
+            - [x] Adapters
+                - [x] LocalStorageAdapter
+                - [x] AsyncAdapter
+                - [ ] Custom adapter
+                - [ ] Loading and Error states
+                - [x] FAQ
+        - [ ] Deploy
+    - [ ] Test app
 - [ ] Testing
     - [x] Unit tests
 - [ ] Documentation
@@ -135,7 +148,7 @@ A strict, schema-first config manager designed for long-lived frontend apps. It 
 1.1.2. Install the `@config-store/core` package using your preferred npm-based package manager:
 
 ```sh
-npm i -S @config-store/core
+npm add @config-store/core
 pnpm add @config-store/core
 yarn add @config-store/core
 bun add @config-store/core
