@@ -3,7 +3,7 @@ import {AdapterEnvelopeSchema, type AdapterEnvelope, type ManagerMetadata} from 
 import {AdapterPayloadError} from '../errors.js';
 
 export interface LocalStorageAdapterOptions {
-  key: string;
+  key?: string;
 }
 
 /**
@@ -12,22 +12,28 @@ export interface LocalStorageAdapterOptions {
  * to support versioning and other metadata.
  */
 export class LocalStorageAdapter extends BaseAdapter {
-  constructor(private options: LocalStorageAdapterOptions) {
+  key: string = '@lolmaus/config-store';
+
+  constructor(options: LocalStorageAdapterOptions = {}) {
     super();
+
+    const {key} = options;
+
+    if (key) this.key = key;
   }
 
   read(): AdapterEnvelope | void {
     if (typeof localStorage === 'undefined') return;
 
-    const rawStrOrNull: string | null = localStorage.getItem(this.options.key);
+    const rawStrOrNull: string | null = localStorage.getItem(this.key);
 
     if (rawStrOrNull === null) return;
 
-    let rawJuson;
+    let rawJson;
 
     try {
-      rawJuson = JSON.parse(rawStrOrNull);
-      return AdapterEnvelopeSchema.parse(rawJuson);
+      rawJson = JSON.parse(rawStrOrNull);
+      return AdapterEnvelopeSchema.parse(rawJson);
     } catch (error) {
       const error2 = new AdapterPayloadError(error);
       this.onReadError(error2);
@@ -44,7 +50,7 @@ export class LocalStorageAdapter extends BaseAdapter {
     };
 
     try {
-      localStorage.setItem(this.options.key, JSON.stringify(payload));
+      localStorage.setItem(this.key, JSON.stringify(payload));
     } catch (e) {
       this.onWriteError(e);
       throw e;
