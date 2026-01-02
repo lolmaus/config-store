@@ -2,7 +2,14 @@ import {BaseAdapter} from './base.js';
 import {AdapterEnvelopeSchema, type AdapterEnvelope, type ManagerMetadata} from '../types.js';
 import {AdapterPayloadError} from '../errors.js';
 
+/**
+ * Options for the LocalStorageAdapter.
+ */
 export interface LocalStorageAdapterOptions {
+  /**
+   * The key under which the settings will be stored in localStorage.
+   * Defaults to `'@lolmaus/config-store'`.
+   */
   key?: string;
 }
 

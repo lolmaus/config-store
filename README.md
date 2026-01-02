@@ -31,8 +31,6 @@ A strict, schema-first config manager designed for long-lived frontend apps. It 
 
 ⠀
 
-⠀
-
 ## Documentation
 
 https://config-store.lolma.us
@@ -60,18 +58,18 @@ https://config-store.lolma.us
         - [x] Configure
         - [x] Switch to per-package changelogs
 - [ ] Packages
-    - [ ] Core
-        - [ ] Adapters
+    - [x] Core
+        - [x] Adapters
             - [x] Base
             - [x] Local Storage
-            - [ ] Async
+            - [x] Async
                 - [x] ~~Debouncing~~
                 - [x] AbortSignal
-                - [ ] Concurrency
+                - [x] Concurrency
                     - [x] Abort (default)
-                    - [ ] Optimistic Concurrency Control
+                    - [x] Optimistic Concurrency Control
                     - [x] Sequential
-        - [x] Config Manger
+        - [ ] Config Manger
             - [x] Schema definition via Zod
             - [x] `addVersion` / Schema History API
             - [x] Migration runner logic
@@ -89,28 +87,30 @@ https://config-store.lolma.us
                 - [ ] Include Zod validation error into error message
         - [x] Barrel file `index.ts`
     - [x] React
-    - [ ] Docs app
-        - [x] Implement
-        - [x] Migrate documentation
-            - [x] Installation
-            - [x] Schema Definition
-            - [x] React Quickstart
-            - [x] Adapters
-                - [x] LocalStorageAdapter
-                - [x] AsyncAdapter
-                - [ ] Custom adapter
-                - [ ] Loading and Error states
-                - [x] FAQ
-        - [x] Deploy
+    - [x] Docs app
     - [ ] Test app
 - [ ] Testing
     - [x] Unit tests
 - [ ] Documentation
     - [x] Readme
     - [ ] Docs app
-    - [ ] API documentation
-        - [ ] Document with inline comments
-        - [ ] Build documentation with TypeDoc
+        - [x] Implement
+        - [ ] Migrate documentation
+            - [x] Installation
+            - [x] Schema Definition
+            - [x] React Quickstart
+            - [ ] Adapters
+                - [x] LocalStorageAdapter
+                - [x] AsyncAdapter
+                - [ ] Custom adapter
+                - [x] FAQ
+            - [ ] Recipes
+                - [ ] Debouncing
+                - [ ] Loading and Error states
+        - [x] Deploy
+    - [x] API documentation
+        - [x] Document with inline comments
+        - [x] Build documentation with TypeDoc
 
 ⠀
 
