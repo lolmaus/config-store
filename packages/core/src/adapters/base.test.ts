@@ -61,7 +61,7 @@ describe('BaseAdapter', () => {
       const args = consoleSpy.mock.calls[0]?.arguments;
 
       m = 'First arg should be a prefix string';
-      assert.match(args?.[0] as string, /\[ConfigManager\]/, m);
+      assert.match(args?.[0] as string, /\[@config-store\] Write failed/, m);
 
       m = 'Second arg should be the error object';
       assert.strictEqual(args?.[1], error, m);
