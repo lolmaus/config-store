@@ -1,9 +1,16 @@
 // packages/core/src/adapters/base.ts
 import type {AdapterEnvelope, ManagerMetadata} from '../types.js';
 
+/**
+ * Abstract base class for all storage adapters.
+ * Implementations must handle reading and writing the `AdapterEnvelope` to a persistence layer.
+ */
 export abstract class BaseAdapter {
   /**
-   * Retrieves the current settings and optional metadata.
+   * Retrieves the current settings and optional metadata from the storage medium.
+   *
+   * @returns An `AdapterEnvelope` containing config and metadata,
+   * or `null`/`undefined`/`void` if empty, depending on adapter implementation.
    */
   abstract read():
     | AdapterEnvelope
@@ -13,10 +20,11 @@ export abstract class BaseAdapter {
     | Promise<AdapterEnvelope | null | undefined | void>;
 
   /**
-   * Persists changes.
-   * @param nextConfig - The full settings object.
-   * @param lastSavedConfig - The previus saved state of the settings. Useful to compute a diff for PATCH requests.
+   * Persists changes to the storage medium.
+   *
+   * @param nextConfig - The full settings object to be saved.
    * @param metadata - The opaque metadata (e.g. dataVersion) from the Manager.
+   * @returns The saved envelope (if the backend modifies it), or void/null/undefined.
    */
   abstract write(
     nextConfig: unknown,
@@ -24,16 +32,22 @@ export abstract class BaseAdapter {
   ): AdapterEnvelope | null | undefined | void | Promise<AdapterEnvelope | null | undefined | void>;
 
   /**
-   * Optional hook for handling errors (logging, toasts, etc).
+   * Optional hook for handling errors that occur during `read`.
+   * Default implementation logs to `console.error`.
+   *
+   * @param error - The error thrown during the read operation.
    */
   onReadError(error: unknown): void {
-    console.error('[ConfigManager] Read failed:', error);
+    console.error('[@config-store] Read failed:', error);
   }
 
   /**
-   * Optional hook for handling errors (logging, toasts, etc).
+   * Optional hook for handling errors that occur during `write`.
+   * Default implementation logs to `console.error`.
+   *
+   * @param error - The error thrown during the write operation.
    */
   onWriteError(error: unknown): void {
-    console.error('[ConfigManager] Write failed:', error);
+    console.error('[@config-store] Write failed:', error);
   }
 }

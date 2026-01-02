@@ -11,8 +11,14 @@
   },
   "dependencies": {
     "@astrojs/starlight": "^0.37.1",
+    "@config-store/core": "workspace:*",
+    "@config-store/react": "workspace:*",
     "@config-store/eslint-config": "workspace:*",
+    "@config-store/typescript-config": "workspace:*",
     "astro": "^5.6.1",
-    "sharp": "^0.34.2"
+    "sharp": "^0.34.2",
+    "starlight-typedoc": "^0.21.5",
+    "typedoc": "^0.28.15",
+    "typedoc-plugin-markdown": "^4.9.0"
   }
 }

@@ -11,6 +11,12 @@ import {createStore, type StoreApi} from 'zustand/vanilla';
 import {ConfigSchemaOutdatedError, ConfigConflictError, ConfigSchemaParseError} from './errors.js';
 import type {ManagerStatus} from './index.js';
 
+/**
+ * The main class managing configuration state, persistence, validation, and version migration.
+ * It uses a Zustand store internally to maintain reactivity.
+ *
+ * @template TCurrent The type of the current configuration schema.
+ */
 export class ConfigManager<TCurrent = undefined> {
   // ------------------------
   // Properties
@@ -19,6 +25,11 @@ export class ConfigManager<TCurrent = undefined> {
   protected adapter: BaseAdapter;
   protected versions: VersionDef<any, any>[]; // eslint-disable-line @typescript-eslint/no-explicit-any
   protected schema: z.ZodType<TCurrent>;
+
+  /**
+   * The underlying Zustand store instance.
+   * Can be used to subscribe to state changes directly.
+   */
   public store: StoreApi<ManagerState<TCurrent>>;
 
   // ------------------------
@@ -70,6 +81,13 @@ export class ConfigManager<TCurrent = undefined> {
   // Static methods
   // ------------------------
 
+  /**
+   * Creates a new ConfigManager instance.
+   *
+   * @param adapter The storage adapter to use (i. e. LocalStorageAdapter, AsyncAdapter or custom).
+   * @param initialVersion The definition of the initial schema version (Version 1).
+   * @returns A ConfigManager instance typed with the initial schema.
+   */
   static create<TConfig>(
     adapter: BaseAdapter,
     initialVersion: VersionDef<void, TConfig>
@@ -81,50 +99,62 @@ export class ConfigManager<TCurrent = undefined> {
   // Public Getters
   // ------------------------
 
+  /** The entire state snapshot of the manager, including config, metadata and load/save state. */
   get state(): ManagerState<TCurrent> {
     return this.store.getState();
   }
 
+  /** The current stored config. */
   get config(): TCurrent {
     return this.state.config;
   }
 
+  /** The metadata (data version and schema version). */
   get metadata(): ManagerMetadata {
     return this.state.metadata;
   }
 
+  /** The current data version number. */
   get dataVersion(): number {
     return this.metadata.dataVersion;
   }
 
+  /** The current schema version number. */
   get schemaVersion(): number {
     return this.metadata.schemaVersion;
   }
 
+  /** True if the store has successfully loaded or saved data at least once. */
   get hasBeenHydrated(): boolean {
     return this.state.hasBeenHydrated;
   }
 
+  /** The status of the load operation. */
   get loadStatus(): ManagerRequestStatus {
     return this.state.loadStatus;
   }
 
+  /** The error from the last load operation, if any. */
   get loadError(): unknown {
     return this.state.loadError;
   }
 
+  /** True if load status is 'initial'. */
   get isLoadInitial(): boolean {
     return this.state.isLoadInitial;
   }
 
+  /** True if load status is 'pending'. */
   get isLoadPending(): boolean {
     return this.state.isLoadPending;
   }
 
+  /** True if load status is 'success'. */
   get isLoadSuccess(): boolean {
     return this.state.isLoadSuccess;
   }
 
+  /** True if load status is 'error'. */
   get isLoadError(): boolean {
     return this.state.isLoadError;
   }
@@ -133,6 +163,14 @@ export class ConfigManager<TCurrent = undefined> {
   // Public methods
   // ------------------------
 
+  /**
+   * Defines the next version of the configuration schema.
+   * This method uses an immutable builder pattern and returns a *new* ConfigManager instance
+   * typed with the new schema.
+   *
+   * @param versionDef The definition of the new version, including schema and migration function.
+   * @returns A new ConfigManager instance.
+   */
   addVersion<TNext>(versionDef: VersionDef<TCurrent, TNext>): ConfigManager<TNext> {
     if (this.store && versionDef.version <= this.schemaVersion) {
       throw new Error(
@@ -140,18 +178,22 @@ export class ConfigManager<TCurrent = undefined> {
       );
     }
 
-    // 1. Create the new definition object
     const newVersion: VersionDef<TCurrent, TNext> = {
       version: versionDef.version,
       schema: versionDef.schema,
       migration: versionDef.migration,
     };
 
-    // Returning a NEW instance with the updated generic type <TNext>.
+    // Returning a new instance with the updated generic type <TNext>.
     // We pass the accumulated history (previous versions + new version).
     return new ConfigManager<TNext>(this.adapter, [...this.versions, newVersion]);
   }
 
+  /**
+   * Loads the configuration from the adapter.
+   * Handles deserialization, validation, and migration of data.
+   * Updates the store with the result.
+   */
   async load(): Promise<void> {
     this.setLoadStatus('pending');
 
@@ -172,6 +214,14 @@ export class ConfigManager<TCurrent = undefined> {
     this.setConfig(migratedEnvelope.config as TCurrent);
   }
 
+  /**
+   * Saves the configuration to the adapter.
+   * Performs an optimistic update on the store immediately.
+   * Handles race conditions and version conflicts.
+   *
+   * @param config The new configuration to save.
+   * @The resolved configuration (may differ from input if server modified it or if race condition occurred).
+   */
   async save(config: TCurrent): Promise<TCurrent> {
     // Optimistic Update
     // We increment the version locally and update the store immediately
@@ -185,7 +235,7 @@ export class ConfigManager<TCurrent = undefined> {
     let responseEnvelope: AdapterEnvelope | null | undefined | void;
 
     try {
-      // 3. Attempt Persistence
+      // Attempt to persist the config
       responseEnvelope = await this.adapter.write(config, optimisticMetadata);
     } catch (error) {
       // Check for Stale Request:
@@ -218,7 +268,7 @@ export class ConfigManager<TCurrent = undefined> {
 
     this.setSaveStatus('success');
 
-    // 4. Handle Success Response
+    // Handle Success Response
     // If adapter returns a body, we accept it as the new truth (e.g. server sanitization)
     if (responseEnvelope) {
       if (responseEnvelope.metadata.schemaVersion > this.schemaVersion) {
@@ -246,7 +296,7 @@ export class ConfigManager<TCurrent = undefined> {
     const zodResult = schema.safeParse(config);
 
     if (zodResult.error) {
-      // Parse failed, retrieving the default
+      // Parse failed, attempt retrieving a default config value
       const zodResult2 = schema.safeParse(undefined);
 
       if (zodResult2.error) {

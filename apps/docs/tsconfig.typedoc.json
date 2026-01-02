@@ -1,0 +1,25 @@
+{
+  "extends": "@config-store/typescript-config/react-library.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "composite": false,
+    "noEmit": true,
+    "types": [],
+    "baseUrl": ".",
+    "paths": {
+      "@config-store/core": ["../../packages/core/src/index.ts"],
+      "@config-store/react": ["../../packages/core/src/index.ts"]
+    }
+  },
+  "include": ["../../packages/core/src/**/*", "../../packages/react/src/**/*"],
+  "exclude": [
+    "../../packages/core/src/**/*.test.ts",
+    "../../packages/core/src/*.test.ts",
+    "../../packages/core/src/**/*.test.tsx",
+    "../../packages/core/src/*.test.tsx",
+    "../../packages/react/src/**/*.test.ts",
+    "../../packages/react/src/*.test.ts",
+    "../../packages/react/src/**/*.test.tsx",
+    "../../packages/react/src/*.test.tsx"
+  ]
+}

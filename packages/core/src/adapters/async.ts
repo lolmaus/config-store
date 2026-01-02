@@ -1,13 +1,34 @@
 import {BaseAdapter} from './base.js';
 import type {AdapterEnvelope, ManagerMetadata} from '../types.js';
 
+/**
+ * Strategy for handling multiple concurrent write requests.
+ * - `'abort'`: Cancels the previous pending request using AbortController (Best for modern APIs).
+ * - `'sequential'`: Queues requests to ensure they run one after another (Best for legacy backends).
+ */
 export type ConcurrencyStrategy = 'abort' | 'sequential';
 
+/**
+ * Configuration options for the `AsyncAdapter`.
+ */
 export interface AsyncAdapterOptions {
+  /**
+   * Function to retrieve data from the remote source.
+   *
+   * @returns Should return {@link AdapterEnvelope} if the backend responds with data.
+   * When the backend has no config stored for the user, return `null` or `undefined`.
+   */
   read: () => Promise<AdapterEnvelope | null | undefined | void>;
 
   /**
-   * Persists settings.
+   * Function to persist data to the remote source.
+   *
+   * @param nextConfig The new configuration object.
+   * @param lastCommittedConfig The last known confirmed configuration from the server (useful for PATCH/Diffing).
+   * @param metadata The versioning metadata.
+   * @param signal An AbortSignal (if concurrency is set to 'abort').
+   * @returns Should return {@link AdapterEnvelope} if the backend responds with updated data.
+   * Otherwise, may return `null` or `undefined`.
    */
   write: (
     nextConfig: unknown,
@@ -16,11 +37,33 @@ export interface AsyncAdapterOptions {
     signal?: AbortSignal
   ) => Promise<AdapterEnvelope | null | undefined | void>;
 
+  /**
+   * Callback fired when a read error occurs. Overrides default logging.
+   *
+   * @param error The error thrown by the adapter.
+   */
   onReadError?: (error: unknown) => void;
+  /**
+   * Callback fired when a write error occurs. Overrides default logging.
+   *
+   * @param error The error thrown by the adapter.
+   */
   onWriteError?: (error: unknown) => void;
+  /** The concurrency strategy to use. Defaults to `'abort'`. */
   concurrency?: ConcurrencyStrategy;
 }
 
+/**
+ * An adapter designed for asynchronous persistence, such as REST APIs.
+ * Includes built-in support for concurrency control (AbortController or Sequential Queue)
+ * and error handling.
+ *
+ * It is not intended to be subclassed (though you can if you know what you're doing).
+ * Instead, it's supposed to be instantiated with `new AsyncAdapter(options)`, passing
+ * {@link AsyncAdapterOptions} for customization.
+ *
+ * See [documentation](https://config-store.lolma.us/guides/adapters/async/) for usage guide.
+ */
 export class AsyncAdapter extends BaseAdapter {
   protected options: AsyncAdapterOptions;
 
@@ -91,37 +134,20 @@ export class AsyncAdapter extends BaseAdapter {
     metadata: ManagerMetadata,
     strategy: ConcurrencyStrategy
   ): Promise<AdapterEnvelope | null | undefined | void> {
-    const runWrite = async (signal?: AbortSignal) => {
-      // 1. Pass 'this.lastCommitted' (Server Truth) to the user
-      const result = await this.options.write(nextConfig, this.lastCommitted, metadata, signal);
-
-      // 2. CRITICAL SAFETY CHECK
-      // If the request was aborted, the server likely didn't process it (or we can't be sure).
-      // We must NOT update 'lastCommitted', or we will assume the server has data it doesn't.
-      if (signal?.aborted) return;
-
-      // 3. Update anchor on success
-      if (result && result.config !== undefined) {
-        this.lastCommitted = result.config;
-      } else {
-        this.lastCommitted = nextConfig;
-      }
-
-      return result;
-    };
-
     // Strategy: Abort (Default)
     if (strategy === 'abort') {
       if (this.abortController) this.abortController.abort();
       this.abortController = new AbortController();
-      return runWrite(this.abortController.signal);
+      return this._executeWriteInternal(nextConfig, metadata, this.abortController.signal);
     }
 
     // Strategy: Queue
     if (strategy === 'sequential') {
       // We wrap runWrite in a closure so it accesses 'this.lastCommitted'
       // lazily, only when the queue actually executes this task.
-      const queuedTask = this.writeQueue.then(() => runWrite());
+      const queuedTask = this.writeQueue.then(() =>
+        this._executeWriteInternal(nextConfig, metadata)
+      );
 
       // Catch errors to ensure queue continues
       this.writeQueue = queuedTask.then(() => undefined).catch(() => undefined);
@@ -129,5 +155,28 @@ export class AsyncAdapter extends BaseAdapter {
     }
 
     throw new Error(`[@config-store] Invalid strategy: ${strategy}`);
+  }
+
+  protected async _executeWriteInternal(
+    nextConfig: unknown,
+    metadata: ManagerMetadata,
+    signal?: AbortSignal
+  ) {
+    const result = await this.options.write(nextConfig, this.lastCommitted, metadata, signal);
+
+    // If the request was aborted, the server likely didn't process it (or we can't be sure).
+    // We must NOT update 'lastCommitted', thus indicating that the backend data may still be outdated.
+    if (signal?.aborted) return;
+
+    // Update anchor on success
+    if (result && result.config !== undefined) {
+      // Use data from backend response if available
+      this.lastCommitted = result.config;
+    } else {
+      // Otherwise use data from the request
+      this.lastCommitted = nextConfig;
+    }
+
+    return result;
   }
 }

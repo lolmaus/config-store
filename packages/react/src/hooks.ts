@@ -14,17 +14,54 @@ import type {
 } from './types.js';
 
 /**
+ * Example:
+ *
+ * ```ts *
+ * const mySettings: MySettings = useConfig<MySettings>();
+ * ```
+ *
+ * ⭐ Use with `createHooks` to avoid passing the `TConfig` generic explicitly:
+ *
+ * ```ts
+ * export const {useConfig} = createHooks<MySettings>();
+ *
+ * const mySettings: MySettings = useConfig();
+ * ```
+ *
+ * @template TConfig The type of the configuration.
+ * @returns The entire configuration object.
+ */
+export function useConfig<TConfig>(): TConfig;
+/**
+ *
+ * Pass a {@link ConfigSelector} function to access a specific property:
+ *
+ * ```ts
+ * const theme: string = useConfig<MySettings, string>((c) => c.theme);
+ * ```
+ *
+ * ⭐ Use with `createHooks` to avoid passing the `TConfig` generic explicitly:
+ *
+ * ```ts
+ * export const {useConfig} = createHooks<MySettings>();
+ *
+ * const theme: string = useConfig<string>((c) => c.theme);
+ * ```
+ *
+ * @template TConfig The type of the configuration.
+ * @template TSelected The selected value.
+ * @param selector - A function that selects a value from the config.
+ * @returns The selected value.
+ */
+export function useConfig<TConfig, TSelected>(
+  selector: ConfigSelector<TConfig, TSelected>
+): TSelected;
+/**
  * Hook to read the config.
  *
  * - If no selector is passed, it returns the entire config object.
- * - If a selector is passed, it returns the specific slice and prevents unnecessary rerenders.
- *
- * Use with `createHooks` to avoid passing the `TConfig` generic explicitly.
+ * - If a selector is passed, it returns a given property and prevents unnecessary rerenders.
  */
-export function useConfig<TConfig>(): TConfig;
-export function useConfig<TConfig, TSelected>(
-  selector: (config: TConfig, state: ManagerState<TConfig>) => TSelected
-): TSelected;
 export function useConfig<TConfig, TSelected>(
   selector?: ConfigSelector<TConfig, TSelected>
 ): TConfig | TSelected {
@@ -52,7 +89,11 @@ export function useConfig<TConfig, TSelected>(
 
 /**
  * Hook to update the configuration.
- * Supports direct replacement or inline mutation functions.
+ *
+ * Supports direct replacement or inline mutation function.
+ *
+ * @template TConfig The type of the configuration.
+ * @returns An object containing the `update` function and status flags.
  */
 export function useUpdateConfig<TConfig>(): UseUpdateConfigResult<TConfig> {
   const manager = useContext(ConfigContext) as ConfigManager<TConfig>;
@@ -97,6 +138,11 @@ export function useUpdateConfig<TConfig>(): UseUpdateConfigResult<TConfig> {
 /**
  * Hook to update the configuration using a Reducer pattern.
  * Best for complex logic or reusable actions.
+ *
+ * @template TConfig The type of the configuration.
+ * @template TPayload The type of the action payload accepted by the reducer.
+ * @param reducer A function that takes current config and a payload, returning the new config.
+ * @returns An object containing the `update(payload)` function and status flags.
  */
 export function useUpdateConfigReducer<TConfig, TPayload>(
   reducer: ConfigReducer<TConfig, TPayload>
@@ -135,6 +181,9 @@ export function useUpdateConfigReducer<TConfig, TPayload>(
 
 /**
  * Creates a set of typed hooks bound to your specific Config type.
+ * Use this to avoid passing the generic type `<MyConfig>` to every hook usage.
+ *
+ * @template TConfig The type of the configuration.
  */
 export function createHooks<TConfig>() {
   return {

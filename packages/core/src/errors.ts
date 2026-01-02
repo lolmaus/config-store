@@ -1,12 +1,8 @@
 import type {AdapterEnvelope} from './types.js';
 
-interface V8ErrorConstructor extends ErrorConstructor {
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-  captureStackTrace(target: object, constructorOpt?: Function): void;
-}
-
 /**
  * Abstract Base Error to centralize stack trace and prototype logic.
+ * Ensures `instanceof` checks work correctly even when transpiled to ES5.
  */
 export abstract class BaseError extends Error {
   constructor(message: string) {
@@ -19,25 +15,25 @@ export abstract class BaseError extends Error {
     Object.setPrototypeOf(this, new.target.prototype);
 
     // Maintain V8 stack trace
-    const v8Error = Error as V8ErrorConstructor;
-    if ('captureStackTrace' in v8Error && typeof v8Error.captureStackTrace === 'function') {
-      v8Error.captureStackTrace(this, new.target);
+    if ('captureStackTrace' in Error && typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, new.target);
     }
   }
 }
 
 /**
- * Error class to handle confilcts
+ * Error thrown when a `ConfigConflictError` occurs (HTTP 409 or logical mismatch).
+ * Contains the server's version of the envelope to allow for "healing" strategies.
  */
 export class ConfigConflictError extends BaseError {
   constructor(public readonly serverEnvelope: AdapterEnvelope) {
     super('Config Conflict');
-    // Name is automatically 'ConfigConflictError' via BaseError
   }
 }
 
 /**
- * Error class to saved schemaVersion being higher than current latest schema
+ * Error thrown when the server responds with a schema version higher than what
+ * the current client understands.
  */
 export class ConfigSchemaOutdatedError extends BaseError {
   constructor(
@@ -50,6 +46,10 @@ export class ConfigSchemaOutdatedError extends BaseError {
   }
 }
 
+/**
+ * Error thrown when the Zod schema fails to parse a value (usually during default value resolution).
+ * Indicates a misconfiguration in the schema definition (e.g., missing `.prefault({})`).
+ */
 export class ConfigSchemaParseError extends BaseError {
   public readonly parseError: unknown;
 
@@ -61,6 +61,10 @@ export class ConfigSchemaParseError extends BaseError {
   }
 }
 
+/**
+ * Error thrown when an adapter retrieves data that is not valid JSON or does not match
+ * the expected Envelope structure.
+ */
 export class AdapterPayloadError extends BaseError {
   public readonly parseError: unknown;
 
