@@ -32,7 +32,7 @@ Migrations are applied transparently, keeping your UI code clean and typed stric
 
 ⠀
 
-### 4.4 What happens if I omit a migration?
+### 4. What happens if I omit a migration?
 
 If a new config version does not define a migration, user settings will be used as-is for this version. This is fine in cases where your schema changes are minor and do not result in different types.
 
@@ -40,6 +40,6 @@ However, if `adapter.read()` returns data that does not match the current Zod sc
 
 ⠀
 
-### 4.5 How do I reset a setting to its default value?
+### 5. How do I reset a setting to its default value?
 
 Pass `undefined` to the update hook: `updateConfig({ theme: undefined })`. Zod will apply the `.default()` value defined in your schema.
