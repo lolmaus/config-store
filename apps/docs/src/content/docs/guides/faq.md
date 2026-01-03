@@ -2,7 +2,7 @@
 title: Frequently Asked Questions
 ---
 
-## 1. Should I use TanStack Query in the adapter?
+### Should I use TanStack Query in the adapter?
 
 **Probably not.**
 
@@ -12,7 +12,7 @@ If you know what you're doing, you _can_ bridge them using `queryClient.fetchQue
 
 ⠀
 
-## 2. Why does the library depend on Zustand?
+### Why does the library depend on Zustand?
 
 The `@config-store/core` package uses `zustand/vanilla` internally as a micro-dependency (<1kb) for the underlying store. The `@config-store/react` package uses `zustand`.
 
@@ -20,7 +20,7 @@ Zustand provides a robust store implementation with selector support, e. g. `use
 
 ⠀
 
-### 3. What's the hassle with migrations?
+### What's the hassle with migrations?
 
 Config schemas change over time as your project matures. For example, dark theme was managed via `darkTheme: boolean` setting, but now it's `theme: 'dark' | 'light' | 'system'`.
 
@@ -32,7 +32,7 @@ Migrations are applied transparently, keeping your UI code clean and typed stric
 
 ⠀
 
-### 4. What happens if I omit a migration?
+### What happens if I omit a migration?
 
 If a new config version does not define a migration, user settings will be used as-is for this version. This is fine in cases where your schema changes are minor and do not result in different types.
 
@@ -40,6 +40,6 @@ However, if `adapter.read()` returns data that does not match the current Zod sc
 
 ⠀
 
-### 5. How do I reset a setting to its default value?
+### How do I reset a setting to its default value?
 
 Pass `undefined` to the update hook: `updateConfig({ theme: undefined })`. Zod will apply the `.default()` value defined in your schema.
