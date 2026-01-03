@@ -57,8 +57,8 @@ export const apiAdapter = AsyncAdapter.create({
     },
 });
 ```
-<<<<<<< Updated upstream
-=======
+
+# <<<<<<< Updated upstream
 
 ````
 >>>>>>> Stashed changes
@@ -186,4 +186,5 @@ const apiAdapter = new AsyncAdapter({
 <<<<<<< Updated upstream
 =======
 ````
->>>>>>> Stashed changes
+
+> > > > > > > Stashed changes
