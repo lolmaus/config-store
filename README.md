@@ -39,7 +39,7 @@ https://config-store.lolma.us
 
 ## Roadmap
 
-- [ ] Infrastructure
+- [x] Infrastructure
     - [x] Monorepo
     - [x] Tasks
         - [x] Format
@@ -48,7 +48,6 @@ https://config-store.lolma.us
         - [x] Build (with `tsdown`)
         - [x] Unit-test (with `tsx` and `node:test`)
     - [x] Turborepo configuration
-    - [ ] Turborepo remote caching
     - [x] CI setup
         - [x] ~~Check PR title for conventional commits~~
         - [x] Run PR checks
@@ -83,7 +82,6 @@ https://config-store.lolma.us
                 - [x] Concurrent requests from burst-clicking
                 - [x] Concurrent requests from different tabs/devices
                 - [x] Saved schema is higher than current latest schema
-                - [ ] Standardize all thrown errors
                 - [ ] Include Zod validation error into error message
         - [x] Barrel file `index.ts`
     - [x] React
