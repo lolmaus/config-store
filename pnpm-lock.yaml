@@ -38,6 +38,12 @@ importers:
       '@config-store/typescript-config':
         specifier: workspace:*
         version: link:../../packages/typescript-config
+      '@fontsource/exo-2':
+        specifier: ^5.2.8
+        version: 5.2.8
+      '@fontsource/oxanium':
+        specifier: ^5.2.8
+        version: 5.2.8
       astro:
         specifier: ^5.6.1
         version: 5.16.6(@types/node@22.15.3)(rollup@4.54.0)(tsx@4.21.0)(typescript@5.9.2)(yaml@2.8.2)
@@ -710,6 +716,12 @@ packages:
 
   '@expressive-code/plugin-text-markers@0.41.5':
     resolution: {integrity: sha512-0DSiTsjWFEz6/iuLOGNNy2GaeCW41OwnVJMKx1tS+XKeQxAL89UkZP3egWNzxjWNHNMzEv3ZWWWYqbonEQlv/Q==}
+
+  '@fontsource/exo-2@5.2.8':
+    resolution: {integrity: sha512-cOZuiqW+gKg2SJAjymCicup0A8qto4M/lpyGahal3twMeLCRma8x/okFCdLYlTvYeQesF7d3WLKi+N04iPb40A==}
+
+  '@fontsource/oxanium@5.2.8':
+    resolution: {integrity: sha512-69zbaespIFhjwCWgs2axD6wiwUhtEDK/R9512mv5h/U2/iv7zJowneRFt2y1aYet6RDLDWyK23F+ltbOhFIngg==}
 
   '@gerrit0/mini-shiki@3.20.0':
     resolution: {integrity: sha512-Wa57i+bMpK6PGJZ1f2myxo3iO+K/kZikcyvH8NIqNNZhQUbDav7V9LQmWOXhf946mz5c1NZ19WMsGYiDKTryzQ==}
@@ -4416,6 +4428,10 @@ snapshots:
   '@expressive-code/plugin-text-markers@0.41.5':
     dependencies:
       '@expressive-code/core': 0.41.5
+
+  '@fontsource/exo-2@5.2.8': {}
+
+  '@fontsource/oxanium@5.2.8': {}
 
   '@gerrit0/mini-shiki@3.20.0':
     dependencies:

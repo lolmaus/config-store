@@ -58,6 +58,11 @@ export const apiAdapter = AsyncAdapter.create({
 });
 ```
 
+# <<<<<<< Updated upstream
+
+````
+>>>>>>> Stashed changes
+
 Then register your adapter with the ConfigManager:
 
 ```ts
@@ -178,3 +183,8 @@ const apiAdapter = new AsyncAdapter({
     },
 });
 ```
+<<<<<<< Updated upstream
+=======
+````
+
+> > > > > > > Stashed changes

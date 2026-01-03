@@ -32,7 +32,12 @@ export default defineConfig({
         },
         typeDocSidebarGroup,
       ],
-      customCss: ['./src/styles.css'],
+      customCss: [
+        './src/styles.css',
+        '@fontsource/oxanium/400.css',
+        '@fontsource/exo-2/400.css',
+        '@fontsource/exo-2/700.css',
+      ],
       plugins: [
         // Generate the documentation.
         starlightTypeDoc({
@@ -40,6 +45,9 @@ export default defineConfig({
           tsconfig: './tsconfig.typedoc.json',
         }),
       ],
+      editLink: {
+        baseUrl: 'https://github.com/lolmaus/config-store/edit/gen0/apps/docs/',
+      },
     }),
   ],
 });
