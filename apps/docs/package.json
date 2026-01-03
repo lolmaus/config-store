@@ -12,9 +12,11 @@
   "dependencies": {
     "@astrojs/starlight": "^0.37.1",
     "@config-store/core": "workspace:*",
-    "@config-store/react": "workspace:*",
     "@config-store/eslint-config": "workspace:*",
+    "@config-store/react": "workspace:*",
     "@config-store/typescript-config": "workspace:*",
+    "@fontsource/exo-2": "^5.2.8",
+    "@fontsource/oxanium": "^5.2.8",
     "astro": "^5.6.1",
     "sharp": "^0.34.2",
     "starlight-typedoc": "^0.21.5",
