@@ -13,6 +13,10 @@
     "typecheck": {
       "dependsOn": ["^typecheck"]
     },
+    "docs#typecheck": {
+      "dependsOn": ["typegen", "^typecheck"]
+    },
+    "docs#typegen": {"outputs": [".astro/**"]},
     "test": {
       "dependsOn": [],
       "outputs": [],

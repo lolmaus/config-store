@@ -220,7 +220,7 @@ export class ConfigManager<TCurrent = undefined> {
    * Handles race conditions and version conflicts.
    *
    * @param config The new configuration to save.
-   * @The resolved configuration (may differ from input if server modified it or if race condition occurred).
+     @returns The resolved configuration (may differ from input if server modified it or if race condition occurred).
    */
   async save(config: TCurrent): Promise<TCurrent> {
     // Optimistic Update
