@@ -113,8 +113,8 @@ describe('LocalStorageAdapter', () => {
             m = 'thrown error instanceof AdapterPayloadError';
             assert.ok(e instanceof AdapterPayloadError, m);
 
-            m = 'thrown error.parseError instanceof SyntaxError';
-            assert.ok(e.parseError instanceof SyntaxError, m);
+            m = 'thrown error.cause instanceof SyntaxError';
+            assert.ok(e.cause instanceof SyntaxError, m);
 
             return true;
           },
@@ -124,8 +124,8 @@ describe('LocalStorageAdapter', () => {
         m = 'onReadError error instanceof AdapterPayloadError';
         assert.ok(readMock.mock.calls[0]?.arguments[0] instanceof AdapterPayloadError, m);
 
-        m = 'onReadError error.parseError instanceof SyntaxError';
-        assert.ok(readMock.mock.calls[0]?.arguments[0].parseError instanceof SyntaxError, m);
+        m = 'onReadError error.cause instanceof SyntaxError';
+        assert.ok(readMock.mock.calls[0]?.arguments[0].cause instanceof SyntaxError, m);
       });
 
       it('Should throw ValidationError on schema mismatch', () => {
@@ -141,8 +141,8 @@ describe('LocalStorageAdapter', () => {
             m = 'thrown error instanceof AdapterPayloadError';
             assert.ok(e instanceof AdapterPayloadError, m);
 
-            m = 'thrown error.parseError instanceof ZodError';
-            assert.ok(e.parseError instanceof ZodError, m);
+            m = 'thrown error.cause instanceof ZodError';
+            assert.ok(e.cause instanceof ZodError, m);
 
             return true;
           },
@@ -152,8 +152,8 @@ describe('LocalStorageAdapter', () => {
         m = 'onReadError error instanceof AdapterPayloadError';
         assert.ok(readMock.mock.calls[0]?.arguments[0] instanceof AdapterPayloadError, m);
 
-        m = 'onReadError error.parseError instanceof ZodError';
-        assert.ok(readMock.mock.calls[0]?.arguments[0].parseError instanceof ZodError, m);
+        m = 'onReadError error.cause instanceof ZodError';
+        assert.ok(readMock.mock.calls[0]?.arguments[0].cause instanceof ZodError, m);
       });
     });
 
