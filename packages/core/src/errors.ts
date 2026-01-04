@@ -1,3 +1,4 @@
+import {ZodError} from 'zod';
 import type {AdapterEnvelope} from './types.js';
 
 interface V8ErrorConstructor extends ErrorConstructor {
@@ -9,8 +10,13 @@ interface V8ErrorConstructor extends ErrorConstructor {
  * Abstract Base Error to centralize stack trace and prototype logic.
  */
 export abstract class BaseError extends Error {
-  constructor(message: string) {
+  /* Holds upstream error */
+  public readonly cause?: unknown;
+
+  constructor(message: string, options: {cause?: unknown} = {}) {
     super(`[@config-store] ${message}`);
+
+    this.cause = options?.cause;
 
     // Automatically set the name to the class name
     this.name = this.constructor.name;
@@ -51,21 +57,26 @@ export class ConfigSchemaOutdatedError extends BaseError {
 }
 
 export class ConfigSchemaParseError extends BaseError {
-  public readonly parseError: unknown;
-
   constructor(error: unknown) {
-    super(
-      'Failed to revert to defaults. Schema must be defined with `.optional()`, `.nullable()`, `.nullish()` or `.prefault({})` on the outer object and `.default()` on every property.'
-    );
-    this.parseError = error;
+    let message =
+      'Failed to revert to defaults. Schema must be defined with `.optional()`, `.nullable()`, `.nullish()` or `.prefault({})` on the outer object and `.default()` on every property.';
+
+    if (error instanceof ZodError) {
+      message += `\n\nZodError: ${error.message}`;
+    }
+
+    super(message, {cause: error});
   }
 }
 
 export class AdapterPayloadError extends BaseError {
-  public readonly parseError: unknown;
-
   constructor(error: unknown) {
-    super('Adapter payload failed to parse');
-    this.parseError = error;
+    let message = 'Adapter payload failed to parse';
+
+    if (error instanceof ZodError) {
+      message += `\n\nZodError: ${error.message}`;
+    }
+
+    super(message, {cause: error});
   }
 }

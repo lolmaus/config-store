@@ -6,18 +6,21 @@
     "build:watch": "turbo run build:watch",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
-    "all": "turbo run lint check-types test build",
+    "all": "turbo run lint typecheck test build",
     "test": "turbo run test",
     "test:watch": "turbo run test:watch",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,md}\"",
-    "check-types": "turbo run check-types",
+    "typecheck": "turbo run typecheck",
+    "checks": "turbo run typecheck lint test",
+    "checks:latest": "turbo run typecheck lint test --filter='...[HEAD]'",
     "changeset": "changeset",
     "version-packages": "changeset version",
     "release": "turbo run build && changeset publish"
   },
   "devDependencies": {
     "@changesets/cli": "^2.29.8",
+    "lefthook": "^2.0.13",
     "prettier": "^3.7.4",
     "turbo": "^2.7.2",
     "typescript": "5.9.2"

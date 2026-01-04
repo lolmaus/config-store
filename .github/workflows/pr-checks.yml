@@ -39,4 +39,4 @@ jobs:
       # We let Turbo orchestrate these. It will parallelize where possible.
       # Note: 'test' depends on 'build' in your turbo.json, so build will run automatically here.
       - name: Run Turbo Pipeline
-        run: pnpm exec turbo run lint check-types test
+        run: pnpm run checks

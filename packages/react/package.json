@@ -42,7 +42,7 @@
   ],
   "scripts": {
     "lint": "eslint . --max-warnings 0",
-    "check-types": "tsc -p tsconfig.build.json && tsc -p tsconfig.test.json",
+    "typecheck": "tsc -p tsconfig.build.json && tsc -p tsconfig.test.json",
     "build": "tsdown",
     "build:watch": "tsdown --watch",
     "#comment": "We need `find` below because curly braces expansion is not available on GitHub CI",

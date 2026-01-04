@@ -1,0 +1,15 @@
+pre-commit:
+  parallel: true
+  commands:
+    # 1. Formatting
+    # We run Prettier directly on staged files.
+    # Turbo is overhead here; it is faster to just format the specific files changed.
+    format:
+      glob: '*.{ts,tsx,md,json}'
+      run: pnpm prettier --write {staged_files}
+      stage_fixed: true
+
+    # 2. Run all checks
+    checks:
+      interactive: true
+      run: pnpm run checks:latest

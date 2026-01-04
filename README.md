@@ -52,7 +52,7 @@ https://config-store.lolma.us
         - [x] ~~Check PR title for conventional commits~~
         - [x] Run PR checks
         - [x] Release npm packages
-    - [ ] lefthook for pre-commit checks
+    - [x] lefthook for pre-commit checks
     - [x] Use Changesets
         - [x] Configure
         - [x] Switch to per-package changelogs
@@ -68,7 +68,7 @@ https://config-store.lolma.us
                     - [x] Abort (default)
                     - [x] Optimistic Concurrency Control
                     - [x] Sequential
-        - [ ] Config Manger
+        - [x] Config Manger
             - [x] Schema definition via Zod
             - [x] `addVersion` / Schema History API
             - [x] Migration runner logic
@@ -78,11 +78,11 @@ https://config-store.lolma.us
             - [x] Zustand store
             - [x] Retrieving config from the manager
             - [x] Updating config
-            - [ ] Error handling
+            - [x] Error handling
                 - [x] Concurrent requests from burst-clicking
                 - [x] Concurrent requests from different tabs/devices
                 - [x] Saved schema is higher than current latest schema
-                - [ ] Include Zod validation error into error message
+                - [x] Include Zod validation error into error message
         - [x] Barrel file `index.ts`
     - [x] React
     - [x] Docs app

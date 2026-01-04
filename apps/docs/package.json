@@ -4,6 +4,9 @@
   "type": "module",
   "version": "0.0.2-alpha.0",
   "scripts": {
+    "lint": "eslint . --max-warnings 0",
+    "typegen": "astro sync",
+    "typecheck": "astro check",
     "dev": "astro dev",
     "start": "astro dev",
     "build": "astro build",
@@ -23,5 +26,9 @@
     "starlight-typedoc": "^0.21.5",
     "typedoc": "^0.28.15",
     "typedoc-plugin-markdown": "^4.9.0"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.6",
+    "eslint": "^9.39.1"
   }
 }

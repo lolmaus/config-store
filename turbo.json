@@ -10,9 +10,13 @@
     "lint": {
       "dependsOn": []
     },
-    "check-types": {
-      "dependsOn": []
+    "typecheck": {
+      "dependsOn": ["^typecheck"]
     },
+    "docs#typecheck": {
+      "dependsOn": ["typegen", "^typecheck"]
+    },
+    "docs#typegen": {"outputs": [".astro/**"]},
     "test": {
       "dependsOn": [],
       "outputs": [],
