@@ -52,7 +52,7 @@ https://config-store.lolma.us
         - [x] ~~Check PR title for conventional commits~~
         - [x] Run PR checks
         - [x] Release npm packages
-    - [ ] lefthook for pre-commit checks
+    - [x] lefthook for pre-commit checks
     - [x] Use Changesets
         - [x] Configure
         - [x] Switch to per-package changelogs
