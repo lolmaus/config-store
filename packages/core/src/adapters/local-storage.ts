@@ -21,12 +21,10 @@ export interface LocalStorageAdapterOptions {
 export class LocalStorageAdapter extends BaseAdapter {
   key: string = '@lolmaus/config-store';
 
-  constructor(options: LocalStorageAdapterOptions = {}) {
+  constructor(options?: LocalStorageAdapterOptions) {
     super();
 
-    const {key} = options;
-
-    if (key) this.key = key;
+    if (options?.key) this.key = options.key;
   }
 
   read(): AdapterEnvelope | void {
