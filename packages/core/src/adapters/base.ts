@@ -30,24 +30,4 @@ export abstract class BaseAdapter {
     nextConfig: unknown,
     metadata: ManagerMetadata
   ): AdapterEnvelope | null | undefined | void | Promise<AdapterEnvelope | null | undefined | void>;
-
-  /**
-   * Optional hook for handling errors that occur during `read`.
-   * Default implementation logs to `console.error`.
-   *
-   * @param error - The error thrown during the read operation.
-   */
-  onReadError(error: unknown): void {
-    console.error('[@config-store] Read failed:', error);
-  }
-
-  /**
-   * Optional hook for handling errors that occur during `write`.
-   * Default implementation logs to `console.error`.
-   *
-   * @param error - The error thrown during the write operation.
-   */
-  onWriteError(error: unknown): void {
-    console.error('[@config-store] Write failed:', error);
-  }
 }

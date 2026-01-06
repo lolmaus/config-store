@@ -27,15 +27,18 @@ describe('ConfigManager', () => {
     it('initializes with default values when adapter returns undefined (empty storage) + test state', async () => {
       // Setup: Adapter returns undefined by default (see MockAdapter)
 
-      const manager = ConfigManager.create(adapter, {
-        version: 1,
-        schema: z
-          .object({
-            theme: z.enum(['light', 'dark']).default('light'),
-            notifications: z.boolean().default(true),
-          })
-          .prefault({}),
-      });
+      const manager = ConfigManager.create(
+        {adapter},
+        {
+          version: 1,
+          schema: z
+            .object({
+              theme: z.enum(['light', 'dark']).default('light'),
+              notifications: z.boolean().default(true),
+            })
+            .prefault({}),
+        }
+      );
 
       m = 'manager.state initial';
       assert.partialDeepStrictEqual(
@@ -106,15 +109,18 @@ describe('ConfigManager', () => {
         metadata: {dataVersion: 1, schemaVersion: 1},
       };
 
-      const manager = ConfigManager.create(adapter, {
-        version: 1,
-        schema: z
-          .object({
-            theme: z.enum(['light', 'dark']).default('light'),
-            notifications: z.boolean().default(true),
-          })
-          .prefault({}),
-      });
+      const manager = ConfigManager.create(
+        {adapter},
+        {
+          version: 1,
+          schema: z
+            .object({
+              theme: z.enum(['light', 'dark']).default('light'),
+              notifications: z.boolean().default(true),
+            })
+            .prefault({}),
+        }
+      );
 
       await manager.load();
 
@@ -138,14 +144,17 @@ describe('ConfigManager', () => {
         metadata: {dataVersion: 1, schemaVersion: 1},
       };
 
-      const manager = ConfigManager.create(adapter, {
-        version: 1,
-        schema: z
-          .object({
-            theme: z.enum(['light', 'dark']).default('light'),
-          })
-          .prefault({}),
-      });
+      const manager = ConfigManager.create(
+        {adapter},
+        {
+          version: 1,
+          schema: z
+            .object({
+              theme: z.enum(['light', 'dark']).default('light'),
+            })
+            .prefault({}),
+        }
+      );
 
       await manager.load();
 
@@ -161,10 +170,13 @@ describe('ConfigManager', () => {
         metadata: {dataVersion: 1, schemaVersion: 1},
       };
 
-      const manager = ConfigManager.create(adapter, {
-        version: 1,
-        schema: z.object({theme: z.literal(['foo', 'bar']).default('foo')}).prefault({}),
-      });
+      const manager = ConfigManager.create(
+        {adapter},
+        {
+          version: 1,
+          schema: z.object({theme: z.literal(['foo', 'bar']).default('foo')}).prefault({}),
+        }
+      );
 
       await manager.load();
 
@@ -183,10 +195,13 @@ describe('ConfigManager', () => {
       m = 'addVersion should throw with an error';
       await assert.throws(
         () => {
-          ConfigManager.create(adapter, {
-            version: 1,
-            schema: z.object({theme: z.literal(['foo', 'bar']).default('foo')}),
-          });
+          ConfigManager.create(
+            {adapter},
+            {
+              version: 1,
+              schema: z.object({theme: z.literal(['foo', 'bar']).default('foo')}),
+            }
+          );
         },
         (e) =>
           e instanceof Error &&
@@ -205,10 +220,13 @@ describe('ConfigManager', () => {
         metadata: {dataVersion: 1, schemaVersion: 1}, // Old version
       };
 
-      const manager = ConfigManager.create(adapter, {
-        version: 1,
-        schema: z.object({darkTheme: z.boolean().default(false)}).prefault({}),
-      }).addVersion({
+      const manager = ConfigManager.create(
+        {adapter},
+        {
+          version: 1,
+          schema: z.object({darkTheme: z.boolean().default(false)}).prefault({}),
+        }
+      ).addVersion({
         version: 2,
         schema: z.object({theme: z.literal(['light', 'dark']).default('light')}).prefault({}),
         migration: (prev) => ({
@@ -229,10 +247,13 @@ describe('ConfigManager', () => {
         metadata: {dataVersion: 1, schemaVersion: 1},
       };
 
-      const manager = ConfigManager.create(adapter, {
-        version: 1,
-        schema: z.object({val: z.number().default(123)}).prefault({}),
-      })
+      const manager = ConfigManager.create(
+        {adapter},
+        {
+          version: 1,
+          schema: z.object({val: z.number().default(123)}).prefault({}),
+        }
+      )
         .addVersion({
           version: 2,
           schema: z.object({val: z.number().default(123)}).prefault({}),
@@ -260,10 +281,13 @@ describe('ConfigManager', () => {
       m = 'should throw, disallowing a lower version number';
       assert.throws(
         () => {
-          ConfigManager.create(adapter, {
-            version: 1,
-            schema: z.object({val: z.number().default(0)}).prefault({}),
-          })
+          ConfigManager.create(
+            {adapter},
+            {
+              version: 1,
+              schema: z.object({val: z.number().default(0)}).prefault({}),
+            }
+          )
             .addVersion({
               version: 3,
               schema: z.object({val: z.number().default(1)}).prefault({}),
@@ -283,10 +307,13 @@ describe('ConfigManager', () => {
 
   describe('Updates (save)', () => {
     it('updates the state and persists via the adapter that returns the exact config and meta, without prior loading', async () => {
-      const manager = ConfigManager.create(adapter, {
-        version: 1,
-        schema: z.object({theme: z.string().default('light')}).prefault({}),
-      });
+      const manager = ConfigManager.create(
+        {adapter},
+        {
+          version: 1,
+          schema: z.object({theme: z.string().default('light')}).prefault({}),
+        }
+      );
 
       await manager.save({theme: 'dark'});
 
@@ -330,10 +357,13 @@ describe('ConfigManager', () => {
     });
 
     it('updates the state and persists via the adapter that returns the exact config and meta, with prior loading', async () => {
-      const manager = ConfigManager.create(adapter, {
-        version: 1,
-        schema: z.object({theme: z.string().default('light')}).prefault({}),
-      });
+      const manager = ConfigManager.create(
+        {adapter},
+        {
+          version: 1,
+          schema: z.object({theme: z.string().default('light')}).prefault({}),
+        }
+      );
 
       await manager.load();
       await manager.save({theme: 'dark'});
@@ -382,10 +412,13 @@ describe('ConfigManager', () => {
         this.state = {config: nextConfig, metadata};
       });
 
-      const manager = ConfigManager.create(adapter, {
-        version: 1,
-        schema: z.object({theme: z.string().default('light')}).prefault({}),
-      });
+      const manager = ConfigManager.create(
+        {adapter},
+        {
+          version: 1,
+          schema: z.object({theme: z.string().default('light')}).prefault({}),
+        }
+      );
 
       await manager.load();
       await manager.save({theme: 'dark'});
@@ -406,10 +439,13 @@ describe('ConfigManager', () => {
         return this.state;
       });
 
-      const manager = ConfigManager.create(adapter, {
-        version: 1,
-        schema: z.object({theme: z.string().default('light')}).prefault({}),
-      });
+      const manager = ConfigManager.create(
+        {adapter},
+        {
+          version: 1,
+          schema: z.object({theme: z.string().default('light')}).prefault({}),
+        }
+      );
 
       await manager.load();
       await manager.save({theme: 'dark'});
@@ -430,10 +466,13 @@ describe('ConfigManager', () => {
 
   describe('unit: Getters', () => {
     it('config', () => {
-      const manager = ConfigManager.create(adapter, {
-        version: 1,
-        schema: z.string().default('foo'),
-      });
+      const manager = ConfigManager.create(
+        {adapter},
+        {
+          version: 1,
+          schema: z.string().default('foo'),
+        }
+      );
 
       Object.defineProperty(manager, 'store', {
         value: createStore(() => ({config: 'foo'})),
@@ -445,10 +484,13 @@ describe('ConfigManager', () => {
 
     describe('state-based getters', () => {
       it('state: initial, not hydrated', () => {
-        const manager = ConfigManager.create(adapter, {
-          version: 1,
-          schema: z.string().default('foo'),
-        });
+        const manager = ConfigManager.create(
+          {adapter},
+          {
+            version: 1,
+            schema: z.string().default('foo'),
+          }
+        );
 
         Object.defineProperty(manager, 'store', {
           value: createStore<ManagerState<undefined>>(() => ({
@@ -546,10 +588,13 @@ describe('ConfigManager', () => {
       });
 
       it('state: loading, not hydrated', () => {
-        const manager = ConfigManager.create(adapter, {
-          version: 1,
-          schema: z.string().default('foo'),
-        });
+        const manager = ConfigManager.create(
+          {adapter},
+          {
+            version: 1,
+            schema: z.string().default('foo'),
+          }
+        );
 
         Object.defineProperty(manager, 'store', {
           value: createStore<ManagerState<undefined>>(() => ({
@@ -647,10 +692,13 @@ describe('ConfigManager', () => {
       });
 
       it('state: success, hydrated', () => {
-        const manager = ConfigManager.create(adapter, {
-          version: 1,
-          schema: z.string().default('foo'),
-        });
+        const manager = ConfigManager.create(
+          {adapter},
+          {
+            version: 1,
+            schema: z.string().default('foo'),
+          }
+        );
 
         Object.defineProperty(manager, 'store', {
           value: createStore<ManagerState<undefined>>(() => ({
@@ -748,10 +796,13 @@ describe('ConfigManager', () => {
       });
 
       it('state: error, hydrated', () => {
-        const manager = ConfigManager.create(adapter, {
-          version: 1,
-          schema: z.string().default('foo'),
-        });
+        const manager = ConfigManager.create(
+          {adapter},
+          {
+            version: 1,
+            schema: z.string().default('foo'),
+          }
+        );
 
         Object.defineProperty(manager, 'store', {
           value: createStore<ManagerState<undefined>>(() => ({

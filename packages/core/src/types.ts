@@ -1,5 +1,6 @@
 import z, {ZodType} from 'zod';
 import type {ConfigManager} from './manager.js';
+import type {BaseAdapter} from './adapters/base.js';
 
 /**
  * Represents the current status of an asynchronous operation within the Manager.
@@ -120,3 +121,19 @@ export const AdapterEnvelopeSchema = z.object({
   config: z.unknown(),
   metadata: MetadataSchema,
 }) satisfies z.ZodType<AdapterEnvelope>;
+
+/**
+ * Options for configuring the behavior of the ConfigManager.
+ */
+export interface ConfigManagerOptions {
+  /** The adapter instance to use for persistence. */
+  adapter: BaseAdapter;
+
+  onLoadError?: (error: unknown) => void;
+  onSaveError?: (error: unknown) => void;
+  onMigrationError?: (arg: {
+    error: unknown;
+    currentEnvelope: AdapterEnvelope;
+    versionDef: VersionDef<unknown, unknown>;
+  }) => void;
+}

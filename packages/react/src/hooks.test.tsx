@@ -54,10 +54,13 @@ describe('React Hooks', () => {
     // Reset DOM state before each test
     document.body.innerHTML = '';
 
-    manager = ConfigManager.create(adapter, {
-      version: 1,
-      schema: ConfigSchema,
-    });
+    manager = ConfigManager.create(
+      {adapter},
+      {
+        version: 1,
+        schema: ConfigSchema,
+      }
+    );
   });
 
   afterEach(() => {

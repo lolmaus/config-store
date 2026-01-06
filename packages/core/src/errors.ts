@@ -36,9 +36,11 @@ export abstract class BaseError extends Error {
  * Error class to handle confilcts
  */
 export class ConfigConflictError extends BaseError {
-  constructor(public readonly serverEnvelope: AdapterEnvelope) {
+  readonly serverEnvelope: AdapterEnvelope;
+
+  constructor(serverEnvelope: AdapterEnvelope) {
     super('Config Conflict');
-    // Name is automatically 'ConfigConflictError' via BaseError
+    this.serverEnvelope = serverEnvelope;
   }
 }
 
@@ -46,13 +48,16 @@ export class ConfigConflictError extends BaseError {
  * Error class to saved schemaVersion being higher than current latest schema
  */
 export class ConfigSchemaOutdatedError extends BaseError {
-  constructor(
-    public readonly incomingVersion: number,
-    public readonly currentVersion: number
-  ) {
+  readonly incomingVersion: number;
+  readonly currentVersion: number;
+
+  constructor(incomingVersion: number, currentVersion: number) {
     super(
       `Client outdated. Server schema version ${incomingVersion} > Client version ${currentVersion}`
     );
+
+    this.incomingVersion = incomingVersion;
+    this.currentVersion = currentVersion;
   }
 }
 

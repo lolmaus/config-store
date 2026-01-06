@@ -101,9 +101,6 @@ describe('LocalStorageAdapter', () => {
       });
 
       it('Should throw SyntaxError on invalid JSON', () => {
-        // Mock console.warn to keep test output clean
-        const readMock = mock.method(adapter, 'onReadError', () => {});
-
         getItemMock.mock.mockImplementation(() => 'wtf');
 
         m = 'Read error';
@@ -120,18 +117,9 @@ describe('LocalStorageAdapter', () => {
           },
           m
         );
-
-        m = 'onReadError error instanceof AdapterPayloadError';
-        assert.ok(readMock.mock.calls[0]?.arguments[0] instanceof AdapterPayloadError, m);
-
-        m = 'onReadError error.cause instanceof SyntaxError';
-        assert.ok(readMock.mock.calls[0]?.arguments[0].cause instanceof SyntaxError, m);
       });
 
       it('Should throw ValidationError on schema mismatch', () => {
-        // Mock console.warn to keep test output clean
-        const readMock = mock.method(adapter, 'onReadError', () => {});
-
         getItemMock.mock.mockImplementation(() => '{"theme": "main"}');
 
         m = 'Read error';
@@ -148,12 +136,6 @@ describe('LocalStorageAdapter', () => {
           },
           m
         );
-
-        m = 'onReadError error instanceof AdapterPayloadError';
-        assert.ok(readMock.mock.calls[0]?.arguments[0] instanceof AdapterPayloadError, m);
-
-        m = 'onReadError error.cause instanceof ZodError';
-        assert.ok(readMock.mock.calls[0]?.arguments[0].cause instanceof ZodError, m);
       });
     });
 
@@ -188,30 +170,18 @@ describe('LocalStorageAdapter', () => {
       });
     });
 
-    it('re-throws error and calls onWriteError when storage fails', () => {
+    it('throws error when storage fails', () => {
       const config: TestConfig = {theme: 'dark'};
       const metadata: ManagerMetadata = {dataVersion: 2, schemaVersion: 1};
       const expectedError = new Error('QuotaExceededError');
 
-      // 1. Simulate the failure
+      // Simulate the failure
       setItemMock.mock.mockImplementation(() => {
         throw expectedError;
       });
 
-      // 2. Spy on onWriteError and silence it
-      const onWriteErrorMock = mock.method(adapter, 'onWriteError', () => {});
-
       m = 'Should re-throw the underlying error synchronously';
       assert.throws(() => adapter.write(config, metadata), expectedError, m);
-
-      m = 'Should delegate to onWriteError handler';
-      assert.strictEqual(onWriteErrorMock.mock.callCount(), 1, m);
-
-      // 3. Verify onWriteError received the correct error
-      const args = onWriteErrorMock.mock.calls[0]?.arguments;
-
-      m = 'Should pass the error object to handler';
-      assert.strictEqual(args?.[0], expectedError, m);
     });
   });
 

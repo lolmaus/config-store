@@ -37,18 +37,6 @@ export interface AsyncAdapterOptions {
     signal?: AbortSignal
   ) => Promise<AdapterEnvelope | null | undefined | void>;
 
-  /**
-   * Callback fired when a read error occurs. Overrides default logging.
-   *
-   * @param error The error thrown by the adapter.
-   */
-  onReadError?: (error: unknown) => void;
-  /**
-   * Callback fired when a write error occurs. Overrides default logging.
-   *
-   * @param error The error thrown by the adapter.
-   */
-  onWriteError?: (error: unknown) => void;
   /** The concurrency strategy to use. Defaults to `'abort'`. */
   concurrency?: ConcurrencyStrategy;
 }
@@ -79,30 +67,8 @@ export class AsyncAdapter extends BaseAdapter {
     this.options = options;
   }
 
-  override onReadError(error: unknown): void {
-    if (this.options.onReadError) {
-      this.options.onReadError(error);
-    } else {
-      super.onReadError(error);
-    }
-  }
-
-  override onWriteError(error: unknown): void {
-    if (this.options.onWriteError) {
-      this.options.onWriteError(error);
-    } else {
-      super.onWriteError(error);
-    }
-  }
-
   async read(): Promise<AdapterEnvelope | null | undefined | void> {
-    let envelope: AdapterEnvelope | null | undefined | void;
-    try {
-      envelope = await this.options.read();
-    } catch (e) {
-      this.onReadError(e);
-      throw e;
-    }
+    const envelope: AdapterEnvelope | null | undefined | void = await this.options.read();
 
     // Initialize our anchor point from the server's truth
     this.lastCommitted = envelope?.config;
@@ -124,7 +90,6 @@ export class AsyncAdapter extends BaseAdapter {
       // Swallow AbortErrors to prevent unhandled promise rejections in the UI
       if (err instanceof Error && err.name === 'AbortError') return;
 
-      this.onWriteError(err);
       throw err;
     }
   }
