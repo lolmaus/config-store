@@ -78,17 +78,22 @@ https://config-store.lolma.us
             - [x] Zustand store
             - [x] Retrieving config from the manager
             - [x] Updating config
-            - [x] Error handling
+            - [x] Edge case handling
                 - [x] Concurrent requests from burst-clicking
                 - [x] Concurrent requests from different tabs/devices
                 - [x] Saved schema is higher than current latest schema
                 - [x] Include Zod validation error into error message
+            - [x] Error handling callbacks
+                - [x] `onLoadError`
+                - [x] `onSaveError`
+                - [x] `onMigrationError`
         - [x] Barrel file `index.ts`
     - [x] React
     - [x] Docs app
     - [ ] Test app
 - [ ] Testing
     - [x] Unit tests
+    - [ ] Integration tests with the test app
 - [ ] Documentation
     - [x] Readme
     - [ ] Docs app

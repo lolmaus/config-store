@@ -1,9 +1,9 @@
-import {describe, it, mock, beforeEach} from 'node:test';
+import {describe, it, mock, beforeEach, type Mock} from 'node:test';
 import assert from 'node:assert/strict';
 import {z} from 'zod';
 import {ConfigManager} from './manager.js';
 import {BaseAdapter} from './adapters/base.js';
-import {type AdapterEnvelope, type ManagerMetadata} from './types.js';
+import {type AdapterEnvelope, type ConfigManagerOptions, type ManagerMetadata} from './types.js';
 import {ConfigSchemaOutdatedError, ConfigConflictError} from './errors.js';
 
 // --- Types for Test ---
@@ -51,17 +51,33 @@ class ControlledMockAdapter extends BaseAdapter {
 describe('ConfigManager — Error Handling & Concurrency', () => {
   let adapter: ControlledMockAdapter;
   let manager: ConfigManager<ThemeConfig>;
+  let onLoadErrorSpy: Mock<NonNullable<ConfigManagerOptions['onLoadError']>>;
+  let onSaveErrorSpy: Mock<NonNullable<ConfigManagerOptions['onSaveError']>>;
+  let onMigrationErrorSpy: Mock<NonNullable<ConfigManagerOptions['onMigrationError']>>;
+
   let m: string;
 
   beforeEach(async () => {
+    onLoadErrorSpy = mock.fn();
+    onSaveErrorSpy = mock.fn();
+    onMigrationErrorSpy = mock.fn();
+
     adapter = new ControlledMockAdapter();
 
     // We explicitly cast the chain result to the expected generic type
     // to avoid using 'any' or complex inference in the 'let' declaration above.
-    manager = ConfigManager.create(adapter, {
-      version: 1,
-      schema: themeSchema,
-    });
+    manager = ConfigManager.create(
+      {
+        adapter,
+        onLoadError: onLoadErrorSpy,
+        onSaveError: onSaveErrorSpy,
+        onMigrationError: onMigrationErrorSpy,
+      },
+      {
+        version: 1,
+        schema: themeSchema,
+      }
+    );
   });
 
   describe('Load', () => {
@@ -145,6 +161,9 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
         },
         m
       );
+
+      m = 'onLoadErrorSpy should be called once';
+      assert.strictEqual(onLoadErrorSpy.mock.callCount(), 1, m);
     });
 
     it('Faiulre on second read', async () => {
@@ -234,6 +253,9 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
         },
         m
       );
+
+      m = 'onLoadErrorSpy should be called once';
+      assert.strictEqual(onLoadErrorSpy.mock.callCount(), 1, m);
     });
   });
 
@@ -325,6 +347,9 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
         },
         m
       );
+
+      m = 'onSaveErrorSpy should be called once';
+      assert.strictEqual(onSaveErrorSpy.mock.callCount(), 1, m);
     });
 
     it('Backend has newer data, Conflict Error, accepts backend data', async () => {
@@ -405,6 +430,9 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
         },
         m
       );
+
+      m = 'onSaveErrorSpy should not be called';
+      assert.strictEqual(onSaveErrorSpy.mock.callCount(), 0, m);
     });
 
     it('Conflict Error on outdated request. Ignored.', async () => {
@@ -539,6 +567,9 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
 
       m = 'dataVersion should remain at v2';
       assert.strictEqual(manager.dataVersion, 2, m);
+
+      m = 'onSaveErrorSpy should not be called';
+      assert.strictEqual(onSaveErrorSpy.mock.callCount(), 0, m);
     });
 
     it('Two requests, both succeed in normal order.', async () => {
@@ -656,6 +687,9 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
 
       m = 'Store should stay at blue';
       assert.strictEqual(manager.config.theme, 'blue', m);
+
+      m = 'onSaveErrorSpy should not be called';
+      assert.strictEqual(onSaveErrorSpy.mock.callCount(), 0, m);
     });
 
     it('Generic Error on an outdated request. Ignored.', async () => {
@@ -769,6 +803,9 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
 
       m = 'Store should stay at blue';
       assert.strictEqual(manager.config.theme, 'blue', m);
+
+      m = 'onSaveErrorSpy should not be called';
+      assert.strictEqual(onSaveErrorSpy.mock.callCount(), 0, m);
     });
 
     it('Generic Error on LAST request, last request finishes second (in order)..', async () => {
@@ -891,6 +928,9 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
 
       m = 'Store should optimistically stay on blue';
       assert.strictEqual(manager.config.theme, 'blue', m);
+
+      m = 'onSaveErrorSpy should be called once';
+      assert.strictEqual(onSaveErrorSpy.mock.callCount(), 1, m);
     });
 
     it('Generic Error on LAST request, last request finishes first (out of order)', async () => {
@@ -1009,6 +1049,9 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
 
       m = 'Store should optimistically stay on blue';
       assert.strictEqual(manager.config.theme, 'blue', m);
+
+      m = 'onSaveErrorSpy should not be called';
+      assert.strictEqual(onSaveErrorSpy.mock.callCount(), 0, m);
     });
 
     it('Generic Error on BOTH requests, last request finishes first (out of order)', async () => {
@@ -1130,6 +1173,9 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
 
       m = 'Store should optimistically stay on blue';
       assert.strictEqual(manager.config.theme, 'blue', m);
+
+      m = 'onSaveErrorSpy should be called once';
+      assert.strictEqual(onSaveErrorSpy.mock.callCount(), 1, m);
     });
 
     it('Generic Error on BOTH requests, last request finishes last (in order order)', async () => {
@@ -1250,6 +1296,9 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
 
       m = 'Store should optimistically stay on blue';
       assert.strictEqual(manager.config.theme, 'blue', m);
+
+      m = 'onSaveErrorSpy should be called once';
+      assert.strictEqual(onSaveErrorSpy.mock.callCount(), 1, m);
     });
 
     it('Client Outdated (Schema Version Mismatch). Should Throw.', async () => {
@@ -1274,6 +1323,77 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
         (err: unknown) => err instanceof ConfigSchemaOutdatedError,
         m
       );
+
+      m = 'onSaveErrorSpy should be called once';
+      assert.strictEqual(onSaveErrorSpy.mock.callCount(), 1, m);
     });
+  });
+
+  it('Migration error', async () => {
+    const manager2 = manager.addVersion({
+      version: 2,
+      schema: z.object({theme: z.boolean().default(false)}).prefault({}),
+      migration: () => {
+        throw new Error('Migration Failed');
+      },
+    });
+
+    const loadPromise = manager2.load();
+
+    // Simulate Adapter returning old data (v1)
+    const oldEnvelope: AdapterEnvelope = {
+      config: {theme: 'light'},
+      metadata: {dataVersion: 5, schemaVersion: 1},
+    };
+    adapter.pendingRead?.resolve(oldEnvelope);
+
+    m = 'Should resolve promise';
+    await assert.doesNotReject(loadPromise, m);
+
+    m = 'Store should migrate to v2 defaults';
+    assert.strictEqual(manager2.config.theme, false, m);
+
+    m = 'manager2.state after load and faulty migration';
+    assert.partialDeepStrictEqual(
+      manager2.state,
+      {
+        loadStatus: 'success', // change
+        loadError: null,
+        saveStatus: 'initial',
+        saveError: null,
+        hasBeenHydrated: true,
+        metadata: {
+          dataVersion: 5, // important! Does not revert to 0
+          schemaVersion: 2, // change
+        },
+      },
+      m
+    );
+
+    m = 'onMigrationErrorSpy should be called once';
+    assert.strictEqual(onMigrationErrorSpy.mock.callCount(), 1, m);
+
+    m = 'onMigrationErrorSpy should be called with the arg';
+    const arg = onMigrationErrorSpy.mock.calls[0]?.arguments[0];
+    assert.ok(arg, m);
+
+    m = 'Migration error message should match';
+    assert.strictEqual(
+      arg.error && typeof arg.error === 'object' && 'message' in arg.error && arg.error.message,
+      'Migration Failed',
+      m
+    );
+
+    m = 'currentEnvelope should match';
+    assert.deepStrictEqual(arg.currentEnvelope, oldEnvelope, m);
+
+    m = 'versionDef.migration should be a function';
+    assert.strictEqual(typeof arg.versionDef.migration, 'function', m);
+
+    m = 'versionDef.schema should be a Zod schema';
+    assert.ok(arg.versionDef.schema instanceof z.ZodType, m);
+
+    m = 'versionDef.version should be 2';
+    assert.strictEqual(arg.versionDef.version, 2, m);
   });
 });

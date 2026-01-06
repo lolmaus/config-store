@@ -41,7 +41,6 @@ export class LocalStorageAdapter extends BaseAdapter {
       return AdapterEnvelopeSchema.parse(rawJson);
     } catch (error) {
       const error2 = new AdapterPayloadError(error);
-      this.onReadError(error2);
       throw error2;
     }
   }
@@ -54,12 +53,7 @@ export class LocalStorageAdapter extends BaseAdapter {
       metadata,
     };
 
-    try {
-      localStorage.setItem(this.key, JSON.stringify(payload));
-    } catch (e) {
-      this.onWriteError(e);
-      throw e;
-    }
+    localStorage.setItem(this.key, JSON.stringify(payload));
 
     return {config: nextConfig, metadata};
   }

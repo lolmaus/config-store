@@ -1,11 +1,11 @@
 import z, {type ZodType} from 'zod';
-import type {BaseAdapter} from './adapters/base.js';
 import {
   type AdapterEnvelope,
   type ManagerState,
   type ManagerRequestStatus,
   type ManagerMetadata,
   type VersionDef,
+  type ConfigManagerOptions,
 } from './types.js';
 import {createStore, type StoreApi} from 'zustand/vanilla';
 import {ConfigSchemaOutdatedError, ConfigConflictError, ConfigSchemaParseError} from './errors.js';
@@ -22,7 +22,7 @@ export class ConfigManager<TCurrent = undefined> {
   // Properties
   // ------------------------
 
-  protected adapter: BaseAdapter;
+  protected options: ConfigManagerOptions;
   protected versions: VersionDef<any, any>[]; // eslint-disable-line @typescript-eslint/no-explicit-any
   protected schema: z.ZodType<TCurrent>;
 
@@ -37,13 +37,13 @@ export class ConfigManager<TCurrent = undefined> {
   // ------------------------
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  protected constructor(adapter: BaseAdapter, versions: VersionDef<any, any>[] = []) {
+  protected constructor(options: ConfigManagerOptions, versions: VersionDef<any, any>[] = []) {
     const currentVersion = versions.at(-1) as VersionDef<unknown, TCurrent>;
 
     if (!currentVersion)
       throw new Error('[@config-store] Initialized the ConfigManager without versions');
 
-    this.adapter = adapter;
+    this.options = options;
     this.versions = versions;
     this.schema = currentVersion.schema;
 
@@ -89,10 +89,10 @@ export class ConfigManager<TCurrent = undefined> {
    * @returns A ConfigManager instance typed with the initial schema.
    */
   static create<TConfig>(
-    adapter: BaseAdapter,
+    options: ConfigManagerOptions,
     initialVersion: VersionDef<void, TConfig>
   ): ConfigManager<TConfig> {
-    return new ConfigManager<TConfig>(adapter, [initialVersion]);
+    return new ConfigManager<TConfig>(options, [initialVersion]);
   }
 
   // ------------------------
@@ -186,7 +186,7 @@ export class ConfigManager<TCurrent = undefined> {
 
     // Returning a new instance with the updated generic type <TNext>.
     // We pass the accumulated history (previous versions + new version).
-    return new ConfigManager<TNext>(this.adapter, [...this.versions, newVersion]);
+    return new ConfigManager<TNext>(this.options, [...this.versions, newVersion]);
   }
 
   /**
@@ -200,9 +200,10 @@ export class ConfigManager<TCurrent = undefined> {
     let incomingEnvelope: AdapterEnvelope | null | undefined | void;
 
     try {
-      incomingEnvelope = await this.adapter.read();
+      incomingEnvelope = await this.options.adapter.read();
     } catch (e) {
       this.setLoadStatus('error', e);
+      this.options.onLoadError?.(e);
       throw e;
     }
 
@@ -220,7 +221,7 @@ export class ConfigManager<TCurrent = undefined> {
    * Handles race conditions and version conflicts.
    *
    * @param config The new configuration to save.
-     @returns The resolved configuration (may differ from input if server modified it or if race condition occurred).
+   * @returns The resolved configuration (may differ from input if server modified it or if race condition occurred).
    */
   async save(config: TCurrent): Promise<TCurrent> {
     // Optimistic Update
@@ -236,7 +237,7 @@ export class ConfigManager<TCurrent = undefined> {
 
     try {
       // Attempt to persist the config
-      responseEnvelope = await this.adapter.write(config, optimisticMetadata);
+      responseEnvelope = await this.options.adapter.write(config, optimisticMetadata);
     } catch (error) {
       // Check for Stale Request:
       // If the manager's dataVersion is HIGHER than what we sent in this request,
@@ -258,6 +259,7 @@ export class ConfigManager<TCurrent = undefined> {
 
       // Handle Generic Error (Network, etc)
       this.setSaveStatus('error', error);
+      this.options.onSaveError?.(error);
       throw error;
     }
 
@@ -272,11 +274,13 @@ export class ConfigManager<TCurrent = undefined> {
     // If adapter returns a body, we accept it as the new truth (e.g. server sanitization)
     if (responseEnvelope) {
       if (responseEnvelope.metadata.schemaVersion > this.schemaVersion) {
-        // ToDo: figure out how to recover from this case
-        throw new ConfigSchemaOutdatedError(
+        const error = new ConfigSchemaOutdatedError(
           responseEnvelope.metadata.schemaVersion,
           this.schemaVersion
         );
+
+        this.options.onSaveError?.(error);
+        throw error;
       }
 
       const migratedEnvelope: AdapterEnvelope = this.migrate(responseEnvelope, this.metadata);
@@ -367,11 +371,16 @@ export class ConfigManager<TCurrent = undefined> {
             schemaVersion: nextVersionDef.version,
           },
         };
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      } catch (e) {
-        // Migration failed, reverting to defaults
-        currentEnvelope = this.getDefaultEnvelope(metadata);
-        break;
+      } catch (error) {
+        this.options.onMigrationError?.({error, currentEnvelope, versionDef: nextVersionDef});
+
+        // Migration failed, reverting to defaults, but preserving dataVersion
+        currentEnvelope = this.getDefaultEnvelope({
+          ...metadata,
+          dataVersion: currentEnvelope.metadata.dataVersion,
+        });
+
+        continue;
       }
     }
 

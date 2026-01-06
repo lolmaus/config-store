@@ -270,52 +270,6 @@ describe('AsyncAdapter', () => {
     });
   });
 
-  describe('Error Handling', () => {
-    it('calls custom onReadError when read fails', async () => {
-      const error = new Error('Read failed');
-      const failMock = mock.fn(async () => {
-        throw error;
-      });
-      const onErrorMock = mock.fn();
-
-      adapter = new AsyncAdapter({
-        read: failMock,
-        write: writeMock,
-        onReadError: onErrorMock,
-      });
-
-      const p = adapter.read();
-
-      m = 'Should propagate the write error to the caller';
-      await assert.rejects(p, error, m);
-
-      m = 'Should call onReadError hook exactly once';
-      assert.strictEqual(onErrorMock.mock.callCount(), 1, m);
-    });
-
-    it('calls custom onWriteError when write fails', async () => {
-      const error = new Error('Save failed');
-      const failMock = mock.fn(async () => {
-        throw error;
-      });
-      const onErrorMock = mock.fn();
-
-      adapter = new AsyncAdapter({
-        read: readMock,
-        write: failMock,
-        onWriteError: onErrorMock,
-      });
-
-      const p = adapter.write({theme: 'light', volume: 1}, {dataVersion: 1, schemaVersion: 1});
-
-      m = 'Should propagate the write error to the caller';
-      await assert.rejects(p, error, m);
-
-      m = 'Should call onWriteError hook exactly once';
-      assert.strictEqual(onErrorMock.mock.callCount(), 1, m);
-    });
-  });
-
   describe('Data Integrity vs Diffing Strategies', () => {
     // Shared Server State for these tests
     let serverState: TestConfig;
@@ -371,7 +325,6 @@ describe('AsyncAdapter', () => {
 
     it('Scenario: "Queue" strategy corrupts data if a previous request fails', async () => {
       let callCount = 0;
-      const errorSpy = mock.fn();
 
       const diffPatchMock = mock.fn(async (next: unknown, prev: unknown) => {
         callCount++;
@@ -393,7 +346,6 @@ describe('AsyncAdapter', () => {
         read: readMock,
         write: diffPatchMock,
         concurrency: 'sequential',
-        onWriteError: errorSpy,
       });
 
       await adapter.read();
@@ -410,9 +362,6 @@ describe('AsyncAdapter', () => {
 
       m = 'Corruption: Theme change should be picked up by Req B even if Req A failed';
       assert.deepStrictEqual(serverState, {theme: 'dark', volume: 100}, m);
-
-      m = 'Should have caught exactly one write error (from Req A)';
-      assert.strictEqual(errorSpy.mock.callCount(), 1, m);
     });
   });
 });

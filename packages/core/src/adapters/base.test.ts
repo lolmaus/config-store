@@ -1,4 +1,4 @@
-import {describe, it, mock, beforeEach} from 'node:test';
+import {describe, it, beforeEach} from 'node:test';
 import assert from 'node:assert/strict';
 import {BaseAdapter} from './base.js';
 import type {AdapterEnvelope, ManagerMetadata} from '../types.js';
@@ -45,38 +45,6 @@ describe('BaseAdapter', () => {
         {config: {value: 'new-val'}, metadata: {dataVersion: 2, schemaVersion: 1}},
         m
       );
-    });
-  });
-
-  describe('onWriteError()', () => {
-    it('logs errors to console.error by default', (t) => {
-      const consoleSpy = t.mock.method(console, 'error', () => {});
-      const error = new Error('Test Error');
-
-      adapter.onWriteError(error);
-
-      m = 'Should call console.error once';
-      assert.strictEqual(consoleSpy.mock.callCount(), 1, m);
-
-      const args = consoleSpy.mock.calls[0]?.arguments;
-
-      m = 'First arg should be a prefix string';
-      assert.match(args?.[0] as string, /\[@config-store\] Write failed/, m);
-
-      m = 'Second arg should be the error object';
-      assert.strictEqual(args?.[1], error, m);
-    });
-
-    it('can be overridden by subclasses or instances', (t) => {
-      const consoleSpy = t.mock.method(console, 'error', () => {});
-      const error = new Error('Test Error');
-
-      adapter.onWriteError = mock.fn();
-
-      adapter.onWriteError(error);
-
-      m = 'Console.error should NOT be called';
-      assert.strictEqual(consoleSpy.mock.callCount(), 0, m);
     });
   });
 });
