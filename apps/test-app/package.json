@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "lint": "eslint . --max-warnings 0",
+    "typegen": "tsr generate",
     "typecheck": "tsc -p tsconfig.app.json && tsc -p tsconfig.node.json",
     "dev": "vite",
     "build": "tsc -b && vite build",
@@ -27,6 +28,7 @@
     "@config-store/eslint-config": "workspace:*",
     "@config-store/typescript-config": "workspace:*",
     "@eslint/js": "^9.39.1",
+    "@tanstack/router-cli": "^1.145.7",
     "@tanstack/router-plugin": "^1.145.4",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.5",
