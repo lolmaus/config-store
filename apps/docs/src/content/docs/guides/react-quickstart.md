@@ -47,7 +47,7 @@ export const configManager = ConfigManager
                 ...prev,
 
                 // Migrate the theme setting from boolean to string
-                theme: prev.darkTheme ? 'dark' : 'light',
+                theme: prev.darkTheme ? ('dark' as const) : ('light' as const),
             };
         },
     });

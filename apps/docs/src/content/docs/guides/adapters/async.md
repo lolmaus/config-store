@@ -47,21 +47,8 @@ export const apiAdapter = AsyncAdapter.create({
         // Assuming server returns `{data: {config, metadata}}`
         return AdapterEnvelopeSchema.parse(json?.data);
     },
-
-    onWriteError: (error) => {
-        console.error('[@config-store] Async adapter read failed:', error);
-    },
-
-    onWriteError: (error) => {
-        console.error('[@config-store] Async adapter write failed:', error);
-    },
 });
 ```
-
-# <<<<<<< Updated upstream
-
-````
->>>>>>> Stashed changes
 
 Then register your adapter with the ConfigManager:
 
@@ -183,8 +170,3 @@ const apiAdapter = new AsyncAdapter({
     },
 });
 ```
-<<<<<<< Updated upstream
-=======
-````
-
-> > > > > > > Stashed changes
