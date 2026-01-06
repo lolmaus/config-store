@@ -9,6 +9,10 @@ export type {
   AdapterEnvelope,
   VersionDef,
   InferConfig,
+  OnLoadError,
+  OnSaveError,
+  OnMigrationError,
+  ConfigManagerOptions,
 } from './types.js';
 export {MetadataSchema, AdapterEnvelopeSchema} from './types.js';
 

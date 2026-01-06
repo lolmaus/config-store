@@ -122,6 +122,14 @@ export const AdapterEnvelopeSchema = z.object({
   metadata: MetadataSchema,
 }) satisfies z.ZodType<AdapterEnvelope>;
 
+export type OnLoadError = (error: unknown) => void;
+export type OnSaveError = (error: unknown) => void;
+export type OnMigrationError = (arg: {
+  error: unknown;
+  currentEnvelope: AdapterEnvelope;
+  versionDef: VersionDef<unknown, unknown>;
+}) => void;
+
 /**
  * Options for configuring the behavior of the ConfigManager.
  */
@@ -129,11 +137,7 @@ export interface ConfigManagerOptions {
   /** The adapter instance to use for persistence. */
   adapter: BaseAdapter;
 
-  onLoadError?: (error: unknown) => void;
-  onSaveError?: (error: unknown) => void;
-  onMigrationError?: (arg: {
-    error: unknown;
-    currentEnvelope: AdapterEnvelope;
-    versionDef: VersionDef<unknown, unknown>;
-  }) => void;
+  onLoadError?: OnLoadError;
+  onSaveError?: OnSaveError;
+  onMigrationError?: OnMigrationError;
 }
