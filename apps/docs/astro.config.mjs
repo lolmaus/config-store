@@ -2,6 +2,10 @@
 import {defineConfig} from 'astro/config';
 import starlight from '@astrojs/starlight';
 import starlightTypeDoc, {typeDocSidebarGroup} from 'starlight-typedoc';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // https://astro.build/config
 export default defineConfig({
@@ -50,4 +54,13 @@ export default defineConfig({
       },
     }),
   ],
+  vite: {
+    resolve: {
+      alias: {
+        // Same alias strategy here: point to source
+        '@config-store/core': path.resolve(__dirname, '../../packages/core/src/index.ts'),
+        '@config-store/react': path.resolve(__dirname, '../../packages/react/src/index.ts'),
+      },
+    },
+  },
 });

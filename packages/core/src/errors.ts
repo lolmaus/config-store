@@ -61,6 +61,10 @@ export class ConfigSchemaOutdatedError extends BaseError {
   }
 }
 
+/**
+ * Error class to handle config schema parse errors. Expects to receive a ZodError.
+ */
+
 export class ConfigSchemaParseError extends BaseError {
   constructor(error: unknown) {
     let message =
@@ -74,6 +78,9 @@ export class ConfigSchemaParseError extends BaseError {
   }
 }
 
+/**
+ * Error class to handle adapter payload parse errors. Expects to receive a ZodError.
+ */
 export class AdapterPayloadError extends BaseError {
   constructor(error: unknown) {
     let message = 'Adapter payload failed to parse';

@@ -7,7 +7,7 @@
     "lint": "eslint . --max-warnings 0",
     "typegen": "astro sync",
     "typecheck": "astro check",
-    "dev": "astro dev",
+    "dev": "nodemon --watch ../../packages/core/src --watch ../../packages/react/src --ext ts,tsx --exec 'pnpm exec astro dev'",
     "start": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
@@ -29,6 +29,7 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.6",
-    "eslint": "^9.39.1"
+    "eslint": "^9.39.1",
+    "nodemon": "^3.1.11"
   }
 }

@@ -43,10 +43,10 @@
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc -p tsconfig.build.json && tsc -p tsconfig.test.json",
     "build": "tsdown",
-    "build:watch": "tsdown --watch",
     "#comment": "We need `find` below because curly braces expansion is not available on GitHub CI",
-    "test": "tsx --tsconfig tsconfig.test.json --test $(find src -name '*.test.ts')",
-    "test:watch": "tsx --tsconfig tsconfig.test.json --test --watch $(find src -name '*.test.ts')"
+    "test:unit": "tsx --tsconfig tsconfig.test.json --test $(find src -name '*.test.ts')",
+    "test:unit:file": "tsx --tsconfig tsconfig.test.json --test",
+    "test:unit:watch": "tsx --tsconfig tsconfig.test.json --test --watch $(find src -name '*.test.ts')"
   },
   "peerDependencies": {
     "zod": "^4.0.0"

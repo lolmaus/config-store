@@ -6,7 +6,9 @@
     - [Roadmap](#roadmap)
     - [Development](#development)
         - [Setup](#setup)
-        - [Running Tests](#running-tests)
+        - [Development Server](#development-server)
+        - [Running Unit Tests](#running-unit-tests)
+        - [Running End-To-End Tests](#running-end-to-end-tests)
         - [Building](#building)
         - [Versioning and Publishing](#versioning-and-publishing)
 
@@ -125,30 +127,109 @@ This project uses **TurboRepo** and **pnpm**.
 
 ### Setup
 
-```bash
+```sh
 # Install dependencies
 pnpm install
 ```
 
 ⠀
 
-### Running Tests
+### Development Server
 
-We use the native Node.js test runner.
+Start the development environment for the entire monorepo:
 
-```bash
-# Run all tests
-pnpm test
+```sh
+pnpm run dev
+```
+
+This launches the following apps in parallel:
+
+1.  **Test App (`apps/test-app`)**: A Vite playground for E2E testing and manual verification.
+    - URL: http://localhost:5173
+    - **Source Mode:** Reads directly from `packages/*/src`. Changes to the library code trigger instant HMR updates.
+
+2.  **Documentation (`apps/docs`)**: The Astro + Starlight + TypeDoc documentation site.
+    - URL: http://localhost:4321
+    - **Auto-Restart:** Reads directly from `packages/*/src`. Changes to the library code trigger an automatic restart to regenerate TypeDoc API references.
+
+You can start the `test-app` and the `docs` app individually with:
+
+```sh
+pnpm run dev --filter test-app
+pnpm run dev --filter docs
+```
+
+⠀
+
+### Running Unit Tests
+
+We use the native Node.js test runner for unit tests.
+
+```sh
+# Run all unit tests
+pnpm run test:unit
 
 # Run tests in watch mode
-pnpm test -- --watch
+pnpm run test:unit:watch
+```
+
+Due to how these tasks are written, you cannot use `-- filename` with them. To be able to run an individual test file, use a dedicated task:
+
+```sh
+pnpm run test:unit:file --filter @config-store/core -- src/manager.test.ts
+pnpm run test:unit:file --filter @config-store/react -- src/hooks.test.tsx
+```
+
+⠀
+
+### Running End-To-End Tests
+
+Before you can run E2E tests, you need to install Playwright browsers and dependencies:
+d
+
+```sh
+pnpm run test:e2e:install
+```
+
+To run E2E tests, use one of these commands, depending on your needs:
+
+```sh
+# Runs the entire test suite once in headless browser
+pnpm run test:e2e
+
+# Starts the Playwright UI that lets you choose which tests to run
+# and inspect results
+pnpm run test:e2e:ui
+
+# Runs the test suite once in headed browser in debug mode
+pnpm run test:e2e:debug
+```
+
+You can pass arguments to Playwright by adding `--` after the command.
+
+```sh
+# Filter by filename
+pnpm run test:e2e -- login.spec.ts
+
+# Filter by test case name
+pnpm run test:e2e -- -g "validation"
+```
+
+Playwright will automatically build and start the `test-app` for the duration of E2E test suite run, if the `test-app` not already running.
+
+For better DX, you might want to start the `test-app` in a separate terminal window:
+
+```dev
+pnpm run dev --filter test-app
 ```
 
 ⠀
 
 ### Building
 
-```bash
+To build the libraries (`dist/` folders) and the apps:
+
+```sh
 # Build all packages
 pnpm build
 ```
@@ -161,7 +242,7 @@ This repository uses **Changesets** for version management.
 
 1.  **Create a changeset:** Run this command before commiting your changes to generate a changelog entry:
 
-    ```bash
+    ```sh
     pnpm changeset
     ```
 
@@ -169,12 +250,12 @@ This repository uses **Changesets** for version management.
 
 2.  **Version packages:** (Usually handled by CI)
 
-    ```bash
+    ```sh
     pnpm changeset version
     pnpm install # update lockfile
     ```
 
 3.  **Publish:**
-    ```bash
+    ```sh
     pnpm release
     ```
