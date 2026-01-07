@@ -8,12 +8,20 @@ on:
   workflow_dispatch:
 
 env:
-  E2E_TESTS_DIR: apps/tests-e2e/
+  PLAYWRIGHT_REPORT_DIR: apps/tests-e2e/playwright-report/
+
+permissions:
+  pull-requests: write
 
 jobs:
   test:
     timeout-minutes: 60
     runs-on: ubuntu-latest
+
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      NETLIFY_SITE_ID: ${{ secrets.NETLIFY_PROJECT_ID }}
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -38,9 +46,32 @@ jobs:
       - name: Run Playwright tests
         run: pnpm run test:e2e
 
+      - name: Deploy Report to Netlify
+        id: netlify
+        if: "!cancelled() && github.event_name == 'pull_request' && env.NETLIFY_AUTH_TOKEN != ''"
+        uses: nwtgck/actions-netlify@v3
+        with:
+          publish-dir: ${{ env.PLAYWRIGHT_REPORT_DIR }}
+          production-branch: gen0
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: 'Deploy from GitHub Actions'
+          enable-pull-request-comment: false # We use a custom comment below
+          enable-commit-comment: false
+          overwrites-pull-request-comment: false
+
+      - name: Comment PR with link to report
+        uses: thollander/actions-comment-pull-request@v3
+        if: "!cancelled() && steps.netlify.conclusion == 'success'"
+        with:
+          message: |
+            ### 🎭 Playwright Report
+            View the full test report for this PR:
+            **${{ steps.netlify.outputs.deploy-url }}**
+          comment-tag: playwright-report
+
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
           name: playwright-report
-          path: ${{ env.E2E_TESTS_DIR }}/playwright-report/
+          path: ${{ env.PLAYWRIGHT_REPORT_DIR }}
           retention-days: 30
