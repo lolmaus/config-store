@@ -111,7 +111,7 @@ https://config-store.lolma.us
                 - [x] FAQ
             - [ ] Recipes
                 - [ ] Debouncing
-                - [ ] Loading and Error states
+                - [x] Loading and Error states
         - [x] Deploy
     - [x] API documentation
         - [x] Document with inline comments
