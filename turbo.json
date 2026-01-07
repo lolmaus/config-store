@@ -14,8 +14,7 @@
     },
 
     "typegen": {
-      "inputs": ["src/**"],
-      "outputs": []
+      "inputs": ["src/**"]
     },
     "docs#typegen": {
       "inputs": ["astro.config.mjs", "src/content/**"],
@@ -26,28 +25,48 @@
       "outputs": ["src/routeTree.gen.ts"]
     },
 
-    "lint": {
-      "dependsOn": []
-    },
+    "lint": {},
 
     "typecheck": {
       "dependsOn": ["typegen", "^typecheck"]
     },
 
-    "test": {
-      "dependsOn": [],
-      "outputs": [],
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "docs#dev": {
+      "cache": false,
+      "persistent": true
+    },
+
+    "test:unit": {
       "inputs": ["src/**/*.tsx", "src/**/*.ts", "test/**/*.ts"]
     },
 
-    "build:watch": {
+    "test:unit:file": {
+      "cache": false
+    },
+
+    "test:unit:watch": {
       "cache": false,
       "persistent": true
     },
 
-    "test:watch": {
-      "cache": false,
-      "persistent": true
+    "test:e2e:install": {
+      "cache": false
+    },
+
+    "test:e2e": {
+      "cache": false
+    },
+
+    "test:e2e:ui": {
+      "cache": false
+    },
+
+    "test:e2e:debug": {
+      "cache": false
     }
   }
 }

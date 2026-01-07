@@ -33,15 +33,10 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install Playwright Browsers
-        working-directory: ${{ env.E2E_TESTS_DIR }}
-        run: pnpm exec playwright install --with-deps
-
-      - name: Builid
-        run: pnpm run build
+        run: pnpm run test:e2e:install
 
       - name: Run Playwright tests
-        working-directory: ${{ env.E2E_TESTS_DIR }}
-        run: pnpm exec playwright test
+        run: pnpm run test:e2e
 
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
