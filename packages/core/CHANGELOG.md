@@ -1,5 +1,18 @@
 # @config-store/core
 
+## 1.0.0-alpha.3
+
+### Minor Changes
+
+- 617c98a: - Remove onReadError and onWriteError from adapters.
+    - Make the first argument of `ConfigManager.create()` to be an options object of type `ConfigManagerOptions`.
+    - Implement `onLoadError`, `onSaveError` and `onMigrationError` callbacks.
+
+### Patch Changes
+
+- f6886a2: Improved messages for Zod-based validation errors.
+- 7af4486: Fix the default value of LocalStorageAdapter constructor arg
+
 ## 1.0.0-alpha.2
 
 ### Patch Changes

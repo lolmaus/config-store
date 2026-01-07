@@ -7,11 +7,16 @@
     "@config-store/core": "0.2.0",
     "@config-store/eslint-config": "0.0.0",
     "@config-store/react": "0.1.0",
-    "@config-store/typescript-config": "0.0.0"
+    "@config-store/typescript-config": "0.0.0",
+    "test-app": "0.0.0",
+    "tests-e2e": "1.0.0"
   },
   "changesets": [
     "busy-facts-wish",
     "clever-hairs-count",
-    "forty-glasses-yawn"
+    "forty-glasses-yawn",
+    "great-bikes-cough",
+    "sharp-trees-burn",
+    "witty-rooms-lead"
   ]
 }

@@ -1,6 +1,6 @@
 {
   "name": "@config-store/core",
-  "version": "1.0.0-alpha.2",
+  "version": "1.0.0-alpha.3",
   "description": "A frontend library to store an arbitrary config (user settings) with strict typing, Zod validation, automated schema migrations, adapters to persist to localStorage or backend",
   "homepage": "https://config-store.lolma.us",
   "bugs": {
