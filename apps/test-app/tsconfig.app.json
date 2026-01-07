@@ -1,0 +1,21 @@
+{
+  "extends": "@config-store/typescript-config/react.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
+    "types": ["vite/client"],
+
+    "baseUrl": ".",
+    "paths": {
+      "@config-store/core": ["../../packages/core/src/index.ts"],
+      "@config-store/react": ["../../packages/react/src/index.ts"]
+    },
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "noEmit": true
+  },
+  "include": ["src"]
+}

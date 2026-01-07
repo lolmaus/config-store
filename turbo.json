@@ -7,25 +7,44 @@
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
     },
+    "test-app#build": {
+      "dependsOn": ["typegen", "^build"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
+    },
+
+    "typegen": {
+      "inputs": ["src/**"],
+      "outputs": []
+    },
+    "docs#typegen": {
+      "inputs": ["astro.config.mjs", "src/content/**"],
+      "outputs": [".astro/**", "src/env.d.ts"]
+    },
+    "test-app#typegen": {
+      "inputs": ["tsr.config.json", "src/routes/**"],
+      "outputs": ["src/routeTree.gen.ts"]
+    },
+
     "lint": {
       "dependsOn": []
     },
+
     "typecheck": {
-      "dependsOn": ["^typecheck"]
-    },
-    "docs#typecheck": {
       "dependsOn": ["typegen", "^typecheck"]
     },
-    "docs#typegen": {"outputs": [".astro/**"]},
+
     "test": {
       "dependsOn": [],
       "outputs": [],
       "inputs": ["src/**/*.tsx", "src/**/*.ts", "test/**/*.ts"]
     },
+
     "build:watch": {
       "cache": false,
       "persistent": true
     },
+
     "test:watch": {
       "cache": false,
       "persistent": true
