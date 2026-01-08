@@ -4,6 +4,7 @@ import starlight from '@astrojs/starlight';
 import starlightTypeDoc, {typeDocSidebarGroup} from 'starlight-typedoc';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
+import starlightLlmsTxt from 'starlight-llms-txt';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -35,6 +36,13 @@ export default defineConfig({
           ],
         },
         typeDocSidebarGroup,
+        {
+          label: 'Docs for AI',
+          items: [
+            {label: 'llms-small.txt (Guides)', link: '/llms-small.txt'},
+            {label: 'llms-full.txt (Guides + API)', link: '/llms-full.txt'},
+          ],
+        },
       ],
       customCss: [
         './src/styles.css',
@@ -47,6 +55,22 @@ export default defineConfig({
         starlightTypeDoc({
           entryPoints: ['../../packages/core/src/index.ts', '../../packages/react/src/index.ts'],
           tsconfig: './tsconfig.typedoc.json',
+        }),
+        starlightLlmsTxt({
+          promote: [
+            'index-llms',
+            'guides/installation',
+            'guides/schema',
+            'guides/react-quickstart',
+            'guides/adapters/local-storage',
+            'guides/adapters/async',
+            'guides/adapters/custom',
+            'guides/loading-and-error-states',
+            'guides/faq',
+          ],
+          demote: ['api/**'],
+          exclude: ['api/**', 'index'],
+          rawContent: true,
         }),
       ],
       editLink: {

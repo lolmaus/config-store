@@ -1,0 +1,48 @@
+---
+title: '@lolmaus/Config-store'
+---
+
+Manage frontend settings transparently!
+
+A frontend library to store an arbitrary config (user settings) with strict typing, Zod validation, automated schema migrations, adapters to persist to localStorage or backend
+
+## Features
+
+- **Universal Config**
+
+  Store user settings feature flags or any persistent client-state in a centralized JSON-like
+  structure.
+
+- **Zod-Powered**
+
+  The config is defined as a [Zod](https://zod.dev) schema, providing strict TypeScript inference
+  across your codebase. Each setting can be anything from a `boolean` to a complex nested object.
+  The Zod schema also provides defaults for each value.
+
+- **Migrations**
+
+  As your schema changes, define migration functions to automatically update a user's config to
+  conform to the new schema. This process is transparent to the consuming app.{' '}
+
+- **Flexible Adapters**
+
+  Ships with a simple `LocalStorageAdapter` and a versatile `AsyncAdapter` (e. g. for REST APIs).
+  You can easily define custom adapters for other protocols (e.g., WebSocket, IndexedDB).
+
+- **Concurrency Control**
+
+  The `AsyncAdapter` provides three strategies for parallel writes:
+  - **abort**: Cancels previous pending requests (default, relies on AbortController).
+  - **optimistic concurrency control**: On top of the **abort** strategy, your backend can emit
+    `409 Conflict` on an attempt to overwrite an newer config version with a newer one.
+  - **sequential**: Waits for each update to finish before processing the next one. Updates pile
+    up in a queue. Useful for legacy backends, at the cost of UX.
+
+- **Framework-agnostic**
+
+  The core can be used with vanilla JS or in any framework.
+
+  The following framework integrations are available:
+  - **React**: Provides hooks like `useConfig` and `useUpdateConfig`. Makes sure your components rerender only when the relevant individual settings change. Unrelated changes to the config will not cause rerenders.
+
+  Support for other frameworks is not planned, but contributions are very welcome.
