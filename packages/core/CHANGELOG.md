@@ -1,5 +1,11 @@
 # @config-store/core
 
+## 1.0.0-alpha.4
+
+### Patch Changes
+
+- dc2d1ad: Minor fix in manager logic of outdated request detection + tests
+
 ## 1.0.0-alpha.3
 
 ### Minor Changes
