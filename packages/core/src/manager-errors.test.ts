@@ -1301,6 +1301,81 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
       assert.strictEqual(onSaveErrorSpy.mock.callCount(), 1, m);
     });
 
+    it('Outdated request should not revert config when newer save completes first', async () => {
+      // Start first (outdated) request
+      const outdatedPromise = manager.save({theme: 'dark'});
+
+      m = 'manager.state after first request starts';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          saveStatus: 'pending',
+          metadata: {
+            dataVersion: 1,
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
+
+      // Start second (fresh) request before first completes
+      const freshPromise = manager.save({theme: 'blue'});
+
+      m = 'manager.state after second request starts';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          saveStatus: 'pending',
+          metadata: {
+            dataVersion: 2, // Incremented again
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
+
+      // Second request completes first (simulating out-of-order response)
+      adapter.pendingWrites[1]!.resolve({
+        config: {theme: 'blue'},
+        metadata: {dataVersion: 2, schemaVersion: 1},
+      });
+
+      m = 'Fresh request should complete successfully';
+      await assert.doesNotReject(freshPromise, m);
+
+      m = 'Store should be at blue (from fresh request)';
+      assert.strictEqual(manager.config.theme, 'blue', m);
+
+      m = 'manager.state after fresh request completes';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          saveStatus: 'success', // Changed because fresh request completed
+          metadata: {
+            dataVersion: 2, // Still 2
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
+
+      // Now complete the outdated request - it should detect it's outdated
+      // and NOT revert the config to 'dark'
+      adapter.pendingWrites[0]!.resolve({
+        config: {theme: 'dark'},
+        metadata: {dataVersion: 1, schemaVersion: 1},
+      });
+
+      m = 'Outdated request should complete without error';
+      await assert.doesNotReject(outdatedPromise, m);
+
+      m = 'Store should STILL be at blue (not reverted to dark)';
+      assert.strictEqual(manager.config.theme, 'blue', m);
+
+      m = 'onSaveErrorSpy should not be called';
+      assert.strictEqual(onSaveErrorSpy.mock.callCount(), 0, m);
+    });
+
     it('Client Outdated (Schema Version Mismatch). Should Throw.', async () => {
       m = 'initial manager.schemaVersion';
       assert.strictEqual(manager.schemaVersion, 1);

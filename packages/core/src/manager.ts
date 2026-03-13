@@ -265,7 +265,7 @@ export class ConfigManager<TCurrent = undefined> {
 
     if (optimisticMetadata.dataVersion < this.dataVersion) {
       // This request is outdated, ignore
-      return config;
+      return this.config;
     }
 
     this.setSaveStatus('success');
