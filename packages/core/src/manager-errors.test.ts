@@ -1404,6 +1404,84 @@ describe('ConfigManager — Error Handling & Concurrency', () => {
     });
   });
 
+  describe('Save - Outdated Request Race Condition', () => {
+    it('Outdated request should return current config, not its own config', async () => {
+      m = 'initial manager.config.theme';
+      assert.strictEqual(manager.config.theme, 'light', m);
+
+      // Start first (outdated) request - will try to save 'dark'
+      const outdatedPromise = manager.save({theme: 'dark'});
+
+      m = 'manager.state after first request starts';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          config: {theme: 'dark'},
+          saveStatus: 'pending',
+          metadata: {
+            dataVersion: 1,
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
+
+      // Start second (fresh) request - will try to save 'blue'
+      // This increments dataVersion again
+      const freshPromise = manager.save({theme: 'blue'});
+
+      m = 'manager.state after second request starts';
+      assert.partialDeepStrictEqual(
+        manager.state,
+        {
+          config: {theme: 'blue'},
+          saveStatus: 'pending',
+          metadata: {
+            dataVersion: 2,
+            schemaVersion: 1,
+          },
+        },
+        m
+      );
+
+      m = 'Store should be at blue';
+      assert.strictEqual(manager.config.theme, 'blue', m);
+
+      // Resolve the first (outdated) request FIRST
+      // The adapter returns the 'dark' config with dataVersion: 1
+      adapter.pendingWrites[0]!.resolve({
+        config: {theme: 'dark'},
+        metadata: {dataVersion: 1, schemaVersion: 1},
+      });
+
+      m = 'Outdated request should resolve without error';
+      await assert.doesNotReject(outdatedPromise, m);
+
+      m = 'Store should STILL be at blue (not reverted to dark)';
+      assert.strictEqual(manager.config.theme, 'blue', m);
+
+      // The outdated request should return the CURRENT config (blue), not its own config (dark)
+      m = 'Outdated request should return current config (blue), not its own (dark)';
+      const outdatedResult = await outdatedPromise;
+      assert.deepStrictEqual(outdatedResult, {theme: 'blue'}, m);
+
+      // Now resolve the second (fresh) request
+      adapter.pendingWrites[1]!.resolve({
+        config: {theme: 'blue'},
+        metadata: {dataVersion: 2, schemaVersion: 1},
+      });
+
+      m = 'Fresh request should resolve without error';
+      await assert.doesNotReject(freshPromise, m);
+
+      m = 'Store should still be at blue';
+      assert.strictEqual(manager.config.theme, 'blue', m);
+
+      m = 'onSaveErrorSpy should not be called';
+      assert.strictEqual(onSaveErrorSpy.mock.callCount(), 0, m);
+    });
+  });
+
   it('Migration error', async () => {
     const manager2 = manager.addVersion({
       version: 2,
