@@ -1,6 +1,34 @@
+/**
+ * Purpose:
+ * Exposes the main React-facing API for reading and updating config through
+ * selectors, mutators, reducers, and typed hook factories.
+ *
+ * Read with:
+ * - ./types.ts
+ * - ./context.ts
+ * - ./provider.tsx
+ * - ../../core/src/types.ts
+ * - ./hooks.test.tsx
+ *
+ * Main entry points:
+ * - useConfig()
+ * - useUpdateConfig()
+ * - useUpdateConfigReducer()
+ * - createHooks()
+ *
+ * What this file owns:
+ * - context consumption for the current manager
+ * - selector-based config reads
+ * - save-status exposure for update hooks
+ * - typed hook factory generation
+ *
+ * When changing this file:
+ * - preserve selector semantics and rerender behavior
+ * - keep public hook contracts aligned with core manager state
+ * - update React tests and docs/examples if public behavior changes
+ */
+
 import {useContext, useCallback} from 'react';
-// We use the 'useStore' hook from zustand to subscribe to the vanilla store exposed by core.
-// This handles useSyncExternalStore + Selectors automatically.
 import {useStore} from 'zustand';
 import {useShallow} from 'zustand/shallow';
 import {ConfigContext} from './context.js';

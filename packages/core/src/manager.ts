@@ -1,3 +1,34 @@
+/**
+ * Purpose:
+ * Orchestrates config load/save, schema validation, migrations, metadata handling,
+ * and optimistic updates for the framework-agnostic config manager.
+ *
+ * Read with:
+ * - ./types.ts
+ * - ./errors.ts
+ * - ./adapters/base.ts
+ * - ./adapters/async.ts
+ * - ./adapters/local-storage.ts
+ *
+ * Main entry points:
+ * - ConfigManager.create()
+ * - addVersion()
+ * - load()
+ * - save()
+ *
+ * What this file owns:
+ * - manager construction and version registration
+ * - current config and metadata accessors
+ * - load pipeline and migration pipeline
+ * - optimistic save pipeline and adapter reconciliation
+ * - load/save status updates exposed to consumers
+ *
+ * When changing this file:
+ * - update nearby manager tests
+ * - review React bindings if manager state shape or status exposure changes
+ * - sync docs/examples if public behavior changes
+ */
+
 import z, {type ZodType} from 'zod';
 import {
   type AdapterEnvelope,
@@ -9,7 +40,6 @@ import {
 } from './types.js';
 import {createStore, type StoreApi} from 'zustand/vanilla';
 import {ConfigSchemaOutdatedError, ConfigConflictError, ConfigSchemaParseError} from './errors.js';
-import type {ManagerStatus} from './index.js';
 
 /**
  * The main class managing configuration state, persistence, validation, and version migration.
@@ -384,12 +414,22 @@ export class ConfigManager<TCurrent = undefined> {
       }
     }
 
-    const finalConfig: TCurrent = this.parse(currentEnvelope.config, this.schema);
+    try {
+      const finalConfig: TCurrent = this.parse(currentEnvelope.config, this.schema);
 
-    return {
-      config: finalConfig,
-      metadata: currentEnvelope.metadata,
-    };
+      return {
+        config: finalConfig,
+        metadata: currentEnvelope.metadata,
+      };
+    } catch (error) {
+      void error;
+
+      // Config is corrupt, reverting to defaults, but preserving dataVersion
+      return this.getDefaultEnvelope({
+        ...metadata,
+        dataVersion: currentEnvelope.metadata.dataVersion,
+      });
+    }
   }
 
   protected getDefaultEnvelope(metadata: ManagerMetadata): AdapterEnvelope<TCurrent> {
@@ -406,7 +446,7 @@ export class ConfigManager<TCurrent = undefined> {
 
   protected setLoadStatus(status: 'pending' | 'success'): void;
   protected setLoadStatus(status: 'error', e: unknown): void;
-  protected setLoadStatus(status: ManagerStatus, error: unknown = null) {
+  protected setLoadStatus(status: ManagerRequestStatus, error: unknown = null) {
     this.store.setState((state) => ({
       ...state,
       loadStatus: status,
@@ -421,7 +461,7 @@ export class ConfigManager<TCurrent = undefined> {
 
   protected setSaveStatus(status: 'pending' | 'success'): void;
   protected setSaveStatus(status: 'error', e: unknown): void;
-  protected setSaveStatus(status: ManagerStatus, error: unknown = null) {
+  protected setSaveStatus(status: ManagerRequestStatus, error: unknown = null) {
     this.store.setState((state) => ({
       ...state,
       saveStatus: status,

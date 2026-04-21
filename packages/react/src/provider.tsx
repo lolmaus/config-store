@@ -1,3 +1,18 @@
+/**
+ * Purpose:
+ * Provides the current ConfigManager instance to the React tree via context.
+ *
+ * Read with:
+ * - ./context.ts
+ * - ./hooks.ts
+ * - ../../core/src/manager.ts
+ *
+ * When changing this file:
+ * - keep provider behavior minimal
+ * - preserve compatibility with hook expectations
+ * - review hook tests if context wiring changes
+ */
+
 import {type ReactNode} from 'react';
 import type {ConfigManager} from '@config-store/core';
 import {ConfigContext} from './context.js';

@@ -1,3 +1,25 @@
+/**
+ * Purpose:
+ * Defines the public type contract for the core package, including manager state,
+ * metadata, version definitions, adapter envelopes, and runtime schemas.
+ *
+ * Read with:
+ * - ./manager.ts
+ * - ./errors.ts
+ * - ./adapters/base.ts
+ * - ../index.ts
+ *
+ * What this file owns:
+ * - manager status and manager state types
+ * - metadata and adapter envelope types
+ * - version registration and manager options types
+ * - public helper schemas and utility types
+ *
+ * When changing this file:
+ * - treat changes as public contract changes
+ * - review manager logic, React bindings, tests, and docs/examples
+ */
+
 import z, {ZodType} from 'zod';
 import type {ConfigManager} from './manager.js';
 import type {BaseAdapter} from './adapters/base.js';

@@ -1,4 +1,21 @@
-// packages/core/src/adapters/base.ts
+/**
+ * Purpose:
+ * Defines the abstract persistence boundary between ConfigManager and storage.
+ *
+ * Read with:
+ * - ../types.ts
+ *
+ * Main responsibilities:
+ * - declare the adapter read contract
+ * - declare the adapter write contract
+ * - establish the envelope/metadata boundary used by the manager
+ *
+ * When changing this file:
+ * - treat it as a public contract change
+ * - review adapter implementations and manager behavior
+ * - update tests and docs/examples if the contract changes
+ */
+
 import type {AdapterEnvelope, ManagerMetadata} from '../types.js';
 
 /**

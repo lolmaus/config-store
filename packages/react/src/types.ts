@@ -1,7 +1,4 @@
-import type {
-  ManagerRequestStatus,
-  ManagerState,
-} from 'node_modules/@config-store/core/src/types.js';
+import type {ManagerRequestStatus, ManagerState} from '@config-store/core';
 
 /**
  * A pure function that selects a value from the current config.
