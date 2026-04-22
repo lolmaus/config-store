@@ -107,18 +107,24 @@ export interface AdapterEnvelope<TCurrent = unknown> {
  * Defines a specific version of the configuration schema and how to migrate to it.
  *
  * @template TPrev The type of the configuration in the previous version.
- * @template TNext The type of the configuration in this version.
+ * @template TNextSchema The Zod schema defining the shape of the configuration in this version.
  */
-export interface VersionDef<TPrev, TNext> {
+export interface VersionDef<TPrev, TNextSchema extends ZodType = ZodType> {
   /** The schema version number (must be incremental). */
   version: number;
   /** The Zod schema defining the shape and defaults of this version. */
-  schema: ZodType<TNext>;
+  schema: TNextSchema;
   /**
    * A function that transforms the configuration from the previous version (`TPrev`)
-   * to this version (`TNext`).
+   * to the input of this version's schema.
    */
-  migration?: (prev: TPrev) => TNext;
+  migration?: (prev: TPrev) => z.input<TNextSchema>;
+}
+
+export interface VersionDefInternal {
+  version: number;
+  schema: ZodType;
+  migration?: (prev: unknown) => unknown;
 }
 
 /**
@@ -149,7 +155,7 @@ export type OnSaveError = (error: unknown) => void;
 export type OnMigrationError = (arg: {
   error: unknown;
   currentEnvelope: AdapterEnvelope;
-  versionDef: VersionDef<unknown, unknown>;
+  versionDef: VersionDefInternal;
 }) => void;
 
 /**
