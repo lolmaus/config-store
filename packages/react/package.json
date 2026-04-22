@@ -1,6 +1,6 @@
 {
   "name": "@config-store/react",
-  "version": "1.0.0-alpha.5",
+  "version": "1.0.0-beta.6",
   "description": "The React integration for a frontend library to store an arbitrary config (user settings) with strict typing, Zod validation, automated schema migrations, adapters to persist to localStorage or backend",
   "homepage": "https://config-store.lolma.us",
   "bugs": {
