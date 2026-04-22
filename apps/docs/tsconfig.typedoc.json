@@ -5,7 +5,6 @@
     "composite": false,
     "noEmit": true,
     "types": [],
-    "baseUrl": ".",
     "paths": {
       "@config-store/core": ["../../packages/core/src/index.ts"],
       "@config-store/react": ["../../packages/core/src/index.ts"]

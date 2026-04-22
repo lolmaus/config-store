@@ -5,7 +5,6 @@
     "composite": false,
     "noEmit": true,
     "types": [],
-    "baseUrl": ".",
     "paths": {
       "@config-store/core": ["../core/src/index.ts"]
     }
