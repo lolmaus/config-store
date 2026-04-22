@@ -1,5 +1,11 @@
 # @config-store/core
 
+## 1.0.0-beta.5
+
+### Patch Changes
+
+- 0f88577: Fix ManagerStatus→ManagerRequestStatus rename
+
 ## 1.0.0-alpha.4
 
 ### Patch Changes

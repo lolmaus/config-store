@@ -1,5 +1,12 @@
 # @config-store/react
 
+## 1.0.0-beta.6
+
+### Patch Changes
+
+- Updated dependencies [0f88577]
+    - @config-store/core@1.0.0-beta.5
+
 ## 1.0.0-alpha.5
 
 ### Patch Changes
