@@ -1,3 +1,30 @@
+/**
+ * Purpose:
+ * Implements the asynchronous persistence adapter for remote or delayed storage,
+ * including concurrency handling for overlapping writes.
+ *
+ * Read with:
+ * - ./base.ts
+ * - ../types.ts
+ * - ../errors.ts
+ * - ./async.test.ts
+ *
+ * Main responsibilities:
+ * - delegate async read/write to user-provided adapter callbacks
+ * - preserve the adapter envelope and metadata contract
+ * - enforce supported concurrency behavior for overlapping saves
+ *
+ * Concurrency surface:
+ * - abort: cancel a previous in-flight write
+ * - sequential: queue writes and process them in order
+ *
+ * When changing this file:
+ * - treat concurrency semantics as externally meaningful behavior
+ * - update async adapter tests
+ * - review manager tests if reconciliation or conflict behavior changes
+ * - sync docs/examples if observable behavior changes
+ */
+
 import {BaseAdapter} from './base.js';
 import type {AdapterEnvelope, ManagerMetadata} from '../types.js';
 

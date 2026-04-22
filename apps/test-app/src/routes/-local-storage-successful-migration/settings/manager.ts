@@ -56,7 +56,7 @@ export const configManager = ConfigManager
       return {
         ...remainingState,
         menuCollapsed: !previousState.menuExpanded,
-        theme: previousState.darkTheme ? 'dark' : 'light',
+        theme: previousState.darkTheme ? ('dark' as const) : ('light' as const),
       };
     },
   });

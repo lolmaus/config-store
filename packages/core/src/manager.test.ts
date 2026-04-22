@@ -230,7 +230,7 @@ describe('ConfigManager', () => {
         version: 2,
         schema: z.object({theme: z.literal(['light', 'dark']).default('light')}).prefault({}),
         migration: (prev) => ({
-          theme: prev.darkTheme ? 'dark' : 'light',
+          theme: prev.darkTheme ? ('dark' as const) : ('light' as const),
         }),
       });
 
@@ -238,6 +238,101 @@ describe('ConfigManager', () => {
 
       m = 'config should be migrated';
       assert.deepStrictEqual(manager.config, {theme: 'dark'}, m);
+    });
+
+    it('runs a migration that changes one field and adds another in the same step', async () => {
+      adapter.state = {
+        config: {theme: 'dark'},
+        metadata: {dataVersion: 1, schemaVersion: 1},
+      };
+
+      const manager = ConfigManager.create(
+        {adapter},
+        {
+          version: 1,
+          schema: z
+            .object({
+              widgets: z
+                .object({
+                  overview: z
+                    .object({
+                      intensity: z.boolean().default(true),
+                    })
+                    .prefault({}),
+                })
+                .prefault({}),
+
+              monitoringMap: z
+                .object({
+                  ksodd: z
+                    .object({
+                      areRoadSignsVisible: z.boolean().default(true),
+                      areRoadEventsVisible: z.boolean().default(true),
+                    })
+                    .prefault({}),
+                  foo: z.boolean().default(false),
+                })
+                .prefault({}),
+            })
+            .prefault({}),
+        }
+      ).addVersion({
+        version: 2,
+        schema: z
+          .object({
+            map: z
+              .object({
+                is3D: z.boolean().default(false),
+              })
+              .prefault({}),
+
+            monitoringMap: z
+              .object({
+                overview: z
+                  .object({
+                    intensity: z.boolean().default(true),
+                  })
+                  .prefault({}),
+
+                ksodd: z.array(z.string()).optional(),
+              })
+              .prefault({}),
+          })
+          .prefault({}),
+        migration: (prev) => {
+          const {ksodd: _, ...monitoringMap} = prev.monitoringMap;
+
+          const result = {
+            monitoringMap: {
+              ...monitoringMap,
+              overview: prev.widgets.overview,
+            },
+          };
+
+          return result;
+        },
+      });
+
+      await manager.load();
+
+      m = 'config should include both the migrated field and the newly added field';
+      assert.deepStrictEqual(
+        manager.config,
+        {
+          map: {
+            is3D: false,
+          },
+          monitoringMap: {
+            overview: {
+              intensity: true,
+            },
+          },
+        },
+        m
+      );
+
+      m = 'schema version should advance after migration';
+      assert.deepStrictEqual(manager.metadata, {dataVersion: 1, schemaVersion: 2}, m);
     });
 
     it('runs multiple migrations sequentially (v1 -> v2 -> v3)', async () => {

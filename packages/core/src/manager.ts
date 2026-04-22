@@ -1,3 +1,34 @@
+/**
+ * Purpose:
+ * Orchestrates config load/save, schema validation, migrations, metadata handling,
+ * and optimistic updates for the framework-agnostic config manager.
+ *
+ * Read with:
+ * - ./types.ts
+ * - ./errors.ts
+ * - ./adapters/base.ts
+ * - ./adapters/async.ts
+ * - ./adapters/local-storage.ts
+ *
+ * Main entry points:
+ * - ConfigManager.create()
+ * - addVersion()
+ * - load()
+ * - save()
+ *
+ * What this file owns:
+ * - manager construction and version registration
+ * - current config and metadata accessors
+ * - load pipeline and migration pipeline
+ * - optimistic save pipeline and adapter reconciliation
+ * - load/save status updates exposed to consumers
+ *
+ * When changing this file:
+ * - update nearby manager tests
+ * - review React bindings if manager state shape or status exposure changes
+ * - sync docs/examples if public behavior changes
+ */
+
 import z, {type ZodType} from 'zod';
 import {
   type AdapterEnvelope,
@@ -5,11 +36,11 @@ import {
   type ManagerRequestStatus,
   type ManagerMetadata,
   type VersionDef,
+  type VersionDefInternal,
   type ConfigManagerOptions,
 } from './types.js';
 import {createStore, type StoreApi} from 'zustand/vanilla';
 import {ConfigSchemaOutdatedError, ConfigConflictError, ConfigSchemaParseError} from './errors.js';
-import type {ManagerStatus} from './index.js';
 
 /**
  * The main class managing configuration state, persistence, validation, and version migration.
@@ -23,7 +54,7 @@ export class ConfigManager<TCurrent = undefined> {
   // ------------------------
 
   protected options: ConfigManagerOptions;
-  protected versions: VersionDef<any, any>[]; // eslint-disable-line @typescript-eslint/no-explicit-any
+  protected versions: VersionDefInternal[];
   protected schema: z.ZodType<TCurrent>;
 
   /**
@@ -36,16 +67,19 @@ export class ConfigManager<TCurrent = undefined> {
   // Constructor
   // ------------------------
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  protected constructor(options: ConfigManagerOptions, versions: VersionDef<any, any>[] = []) {
-    const currentVersion = versions.at(-1) as VersionDef<unknown, TCurrent>;
+  protected constructor(
+    options: ConfigManagerOptions,
+    versions: VersionDefInternal[] = [],
+    schema?: z.ZodType<TCurrent>
+  ) {
+    const currentVersion = versions.at(-1);
 
-    if (!currentVersion)
+    if (!currentVersion || !schema)
       throw new Error('[@config-store] Initialized the ConfigManager without versions');
 
     this.options = options;
     this.versions = versions;
-    this.schema = currentVersion.schema;
+    this.schema = schema;
 
     const metadata: ManagerMetadata = {
       dataVersion: 0,
@@ -88,11 +122,33 @@ export class ConfigManager<TCurrent = undefined> {
    * @param initialVersion The definition of the initial schema version (Version 1).
    * @returns A ConfigManager instance typed with the initial schema.
    */
-  static create<TConfig>(
+  static create<TSchema extends ZodType>(
     options: ConfigManagerOptions,
-    initialVersion: VersionDef<void, TConfig>
-  ): ConfigManager<TConfig> {
-    return new ConfigManager<TConfig>(options, [initialVersion]);
+    initialVersion: VersionDef<void, TSchema>
+  ): ConfigManager<z.output<TSchema>> {
+    const initialVersionInternal = this.toInternalVersionDef(initialVersion);
+
+    return new ConfigManager<z.output<TSchema>>(
+      options,
+      [initialVersionInternal],
+      this.toOutputSchema(initialVersion.schema)
+    );
+  }
+
+  protected static toInternalVersionDef<TPrev, TNextSchema extends ZodType>(
+    versionDef: VersionDef<TPrev, TNextSchema>
+  ): VersionDefInternal {
+    return {
+      version: versionDef.version,
+      schema: versionDef.schema,
+      migration: versionDef.migration ? (prev) => versionDef.migration?.(prev as TPrev) : undefined,
+    };
+  }
+
+  protected static toOutputSchema<TSchema extends ZodType>(
+    schema: TSchema
+  ): z.ZodType<z.output<TSchema>> {
+    return schema as z.ZodType<z.output<TSchema>>;
   }
 
   // ------------------------
@@ -171,22 +227,24 @@ export class ConfigManager<TCurrent = undefined> {
    * @param versionDef The definition of the new version, including schema and migration function.
    * @returns A new ConfigManager instance.
    */
-  addVersion<TNext>(versionDef: VersionDef<TCurrent, TNext>): ConfigManager<TNext> {
+  addVersion<TNextSchema extends ZodType>(
+    versionDef: VersionDef<TCurrent, TNextSchema>
+  ): ConfigManager<z.output<TNextSchema>> {
     if (this.store && versionDef.version <= this.schemaVersion) {
       throw new Error(
         `[@config-manager] Version numbers must be incremental, but after ${this.schemaVersion} received ${versionDef.version}`
       );
     }
 
-    const newVersion: VersionDef<TCurrent, TNext> = {
-      version: versionDef.version,
-      schema: versionDef.schema,
-      migration: versionDef.migration,
-    };
+    const newVersion = ConfigManager.toInternalVersionDef(versionDef);
 
-    // Returning a new instance with the updated generic type <TNext>.
+    // Returning a new instance with the updated generic type.
     // We pass the accumulated history (previous versions + new version).
-    return new ConfigManager<TNext>(this.options, [...this.versions, newVersion]);
+    return new ConfigManager<z.output<TNextSchema>>(
+      this.options,
+      [...this.versions, newVersion],
+      ConfigManager.toOutputSchema(versionDef.schema)
+    );
   }
 
   /**
@@ -209,10 +267,10 @@ export class ConfigManager<TCurrent = undefined> {
 
     this.setLoadStatus('success');
 
-    const migratedEnvelope: AdapterEnvelope = this.migrate(incomingEnvelope, this.metadata);
+    const migratedEnvelope = this.migrate(incomingEnvelope, this.metadata);
 
     this.setMetadata(migratedEnvelope.metadata);
-    this.setConfig(migratedEnvelope.config as TCurrent);
+    this.setConfig(migratedEnvelope.config);
   }
 
   /**
@@ -253,8 +311,8 @@ export class ConfigManager<TCurrent = undefined> {
         const migratedEnvelope = this.migrate(error.serverEnvelope, this.metadata);
         this.setSaveStatus('success');
         this.setMetadata(migratedEnvelope.metadata);
-        this.setConfig(migratedEnvelope.config as TCurrent);
-        return migratedEnvelope.config as TCurrent;
+        this.setConfig(migratedEnvelope.config);
+        return migratedEnvelope.config;
       }
 
       // Handle Generic Error (Network, etc)
@@ -283,10 +341,10 @@ export class ConfigManager<TCurrent = undefined> {
         throw error;
       }
 
-      const migratedEnvelope: AdapterEnvelope = this.migrate(responseEnvelope, this.metadata);
+      const migratedEnvelope = this.migrate(responseEnvelope, this.metadata);
       this.setDataVersion(responseEnvelope.metadata.dataVersion);
-      this.setConfig(migratedEnvelope.config as TCurrent);
-      return migratedEnvelope.config as TCurrent;
+      this.setConfig(migratedEnvelope.config);
+      return migratedEnvelope.config;
     } else {
       return config;
     }
@@ -296,7 +354,7 @@ export class ConfigManager<TCurrent = undefined> {
   // Private methods
   // ------------------------
 
-  protected parse<T extends ZodType>(config: unknown, schema: T): z.infer<T> {
+  protected parse<T extends ZodType>(config: unknown, schema: T): z.output<T> {
     const zodResult = schema.safeParse(config);
 
     if (zodResult.error) {
@@ -333,10 +391,7 @@ export class ConfigManager<TCurrent = undefined> {
         break;
       }
 
-      const currentConfigParsed: unknown = this.parse(
-        currentEnvelope.config,
-        currentVersionDef.schema
-      );
+      const currentConfigParsed = this.parse(currentEnvelope.config, currentVersionDef.schema);
 
       const nextVersionDef = this.versions.find(
         (v) => v.version > currentEnvelope.metadata.schemaVersion
@@ -362,7 +417,7 @@ export class ConfigManager<TCurrent = undefined> {
       }
 
       try {
-        const nextConfig = nextVersionDef.migration(currentEnvelope.config);
+        const nextConfig = nextVersionDef.migration(currentConfigParsed);
 
         currentEnvelope = {
           config: nextConfig,
@@ -406,7 +461,7 @@ export class ConfigManager<TCurrent = undefined> {
 
   protected setLoadStatus(status: 'pending' | 'success'): void;
   protected setLoadStatus(status: 'error', e: unknown): void;
-  protected setLoadStatus(status: ManagerStatus, error: unknown = null) {
+  protected setLoadStatus(status: ManagerRequestStatus, error: unknown = null) {
     this.store.setState((state) => ({
       ...state,
       loadStatus: status,
@@ -421,7 +476,7 @@ export class ConfigManager<TCurrent = undefined> {
 
   protected setSaveStatus(status: 'pending' | 'success'): void;
   protected setSaveStatus(status: 'error', e: unknown): void;
-  protected setSaveStatus(status: ManagerStatus, error: unknown = null) {
+  protected setSaveStatus(status: ManagerRequestStatus, error: unknown = null) {
     this.store.setState((state) => ({
       ...state,
       saveStatus: status,

@@ -4,7 +4,6 @@
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
     "types": ["vite/client"],
 
-    "baseUrl": ".",
     "paths": {
       "@config-store/core": ["../../packages/core/src/index.ts"],
       "@config-store/react": ["../../packages/react/src/index.ts"]
